@@ -155,7 +155,7 @@
 		private $scriptFileName = NULL;
 		private $stderrFileName = NULL;
 		private $stdoutFileName = NULL;
-		const $TMP_DIR = "admintmp/files";
+		const $TMP_DIR = "admin/tmp/files";
 
 		private function make_seed() {
 			list($usec, $sec) = explode(' ', microtime());
