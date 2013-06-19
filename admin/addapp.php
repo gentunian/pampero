@@ -4,7 +4,6 @@
 		exit(1);
 	*/
 	define( "PACKAGE_DIR", "packages" . DIRECTORY_SEPARATOR . $_POST['appKey'] );
-	//define( "PACKAGE_DIR", dirname( __FILE__ ) . DIRECTORY_SEPARATOR . "packages" . DIRECTORY_SEPARATOR . $_POST['appKey'] );
 	define( "MANIFEST_FILE", PACKAGE_DIR . DIRECTORY_SEPARATOR . "manifest.json" );
 	// Review: try to find a portable way
 	define( "PACKAGES_SHARE", "\\\\" . gethostname() . "\\packages" );
@@ -25,7 +24,7 @@
 			mkdir( PACKAGE_DIR );
 
 		uploadFile( PACKAGE_DIR );
-
+		file_put_contents( "FILEFILEFILE", MANIFEST_FILE);
 		file_put_contents( MANIFEST_FILE, json_encode( $packageData, JSON_PRETTY_PRINT ) );
 	}
 
