@@ -87,7 +87,8 @@
 	*
 	*/
 	function getTarget( $host ) {
-		return new Target( "Administrador", "RCribera2013*", $host );
+		// TODO: get credentials based on target
+		return new Target( "Administrador", "mypassword", $host );
 	}
 
 

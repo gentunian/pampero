@@ -1,0 +1,1 @@
+echo Running example.bat with args %1 %2

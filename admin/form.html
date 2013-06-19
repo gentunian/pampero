@@ -11,9 +11,9 @@
 
     <!-- <link type="text/css" rel="stylesheet" href="../../css/themes/smoothness-v1/smoothness-v1.css" /> -->
 
-    <script type="text/javascript" src="../../js/jquery.js"></script>
-    <script type="text/javascript" src="../../js/jquery.form.js"></script>
-    <script type="text/javascript" src="../../js/jquery-ui-1.10.3.js"></script>
+    <script type="text/javascript" src="../js/jquery.js"></script>
+    <script type="text/javascript" src="../js/jquery.form.js"></script>
+    <script type="text/javascript" src="../js/jquery-ui-1.10.3.js"></script>
     <script type="text/javascript">
     $.noConflict();
     </script>
@@ -92,7 +92,7 @@
     
     function ajaxPackagesListRequest() {
       jQuery.ajax({
-        url: '../../list.php?json=1',
+        url: '../list.php?json=1',
         success: function( data, statusText, jqXHR ) {
           console.log(data);
           loadPackagesListOnSelect( 'appSelect', JSON.parse(data).aaData );
