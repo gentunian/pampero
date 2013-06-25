@@ -205,13 +205,19 @@
 			}
 			$( '.button' ).css('background-color', okColor);
 			$( '.bar' ).css('background-color', okColor);
+		}		 
+		function pollProgress() {
+			var d = new Date();
+			$.ajax({
+				dataType: 'json',
+				url: 'php/poll.php',
+				cache: false,
+				success: updateDialogProgress
+			});
 		}
 		function updateDialogProgress( data, textStatus, jqXHR ) {
-			console.log(data);
-			console.log(textStatus);
 			if ( data == null || data.length == 0) return;
 			for(var i = 0; i < data.length; i++) {
-				console.log(data[i]);
 				var cmd = data[ i ];
 				var icon = $( '#dialog-datatable td img', 0 )[i]; 
 				if ( typeof( icon ) === "undefined" ) return;
@@ -228,16 +234,8 @@
 			var progress = data.length/dialogTable.fnGetData().length;
 			setDialogTitle('Instalando Componentes... '+data.length+' de '+dialogTable.fnGetData().length+'');
 			setDialogProgressPercentage((progress*100)+'%');
-		} 
-		function pollProgress() {
-			var d = new Date();
-			$.ajax({
-				dataType: 'json',
-				url: 'spawn.php?_='+d.getTime(),
-				cache: false,
-				success: updateDialogProgress
-			});
 		}
+
 		function createSelectOptionsFromArray( id, options , style) {
 			var optionTag = '';
 			for (var i = 0; i < options.length; i++) {
@@ -267,11 +265,11 @@
 			var d = new Date();
 			$.ajax({
 				type: "POST",
-				url: 'spawn.php?_='+d.getTime(),
+				url: 'php/packages.php?command=install', //?_='+d.getTime(),
 				cache: false,
 				data: {
 					jsonArray: jsonData,
-					hostname: $('#hostname').text()
+					target: $('#hostname').text()
 				},
 				beforeSend: function( jqXHR, settings ){
 					popupDialog("Comenzando instalación...", "ATENCION: No apague el equipo ni recargue la página. Se está realizando la instalación de los paquetes seleccionados. Aguarde a que termine la instalación.");
@@ -284,7 +282,7 @@
 					return true;
 				},
 				success: function( data, textStatus, jqXHR ) {
-					console.log("succces first ajax");
+					console.log("succces install ajax");
 					updateDialogProgress( data, textStatus, jqXHR );
 					clearInterval( progressPoll );
 					setDialogMessage( 'La instalación terminó. Verifique la lista de abajo. En caso de haber errores seleccione la fila, lea el error y comuníquese con el administrador de sistemas.');
@@ -326,7 +324,7 @@
 					} );
 				},
 				"bProcessing": true,
-				"sAjaxSource": "list.php?json=1",
+				"sAjaxSource": "php/packages.php?command=list&json=1",
 				"aoColumns": [
 				{ 
 					"mData": "id",
