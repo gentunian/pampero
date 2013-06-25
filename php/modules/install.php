@@ -1,7 +1,8 @@
 <?php
-
-	//do_install($_GET);
-
+	
+	/**
+	*
+	*/
 	function do_install( $args ) {
 		session_start();
 
@@ -143,8 +144,13 @@
 	*
 	*/
 	function getTarget( $host ) {
-		// TODO: get credentials based on target
-		return new Target( "Administrador", "mypassword", $host );
+		include_once( __DIR__ . "/../../admin/config.php" );
+
+		// TODO: get credentials based on target for any user
+		$pwd = getHostPassword( $host );
+
+		$admin = getAdminUsername( $host );
+		return new Target( $admin, $pwd, $host );
 	}
 
 
@@ -212,7 +218,7 @@
 		private $scriptFileName = NULL;
 		private $stderrFileName = NULL;
 		private $stdoutFileName = NULL;
-		private $TMP_DIR = "admin/tmp/files";
+		private $TMP_DIR =  "/../../admin/tmp";
 
 		private function make_seed() {
 			list($usec, $sec) = explode(' ', microtime());
@@ -246,6 +252,7 @@
 		}
 
 		public function __construct( $target = NULL) {
+			$this->TMP_DIR = __DIR__ . $this->TMP_DIR;
 			$this->createScriptFile();
 			$this->createStdoutFile();
 			$this->createStderrFile();
