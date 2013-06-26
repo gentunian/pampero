@@ -46,6 +46,12 @@
 	margin: 2px;
 	font-family: arial;
 	font-size: 16px;
+
+	position: absolute;
+	font-weight: 200;
+	display:inline-block;
+	top:3px;
+
 }
 #dialog-box .dialog-content {
 	/* style the content */
@@ -56,7 +62,7 @@
 	font-family:arial;
 	font-size:14px; 
 }
-a.button {
+#dialog-box .button {
 	/* styles for button */
 	margin:10px auto 0 auto;
 	text-align:center;
@@ -69,7 +75,7 @@ a.button {
 	line-height: 1;
 
 	/* button color */
-	background-color: #e33100;
+	/*background-color: #e33100;*/
 	-moz-border-radius: 5px;
 	-webkit-border-radius: 5px;
 	border-radius: 5px;
@@ -86,6 +92,48 @@ a.button {
 	cursor: pointer;
 
 }
-a.button:hover {
-	background-color: #c33100;	
+#dialog-box .progress { 
+	/* css3 drop shadow */
+	-webkit-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+	-moz-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+
+	/* css3 border radius */
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	
+	position:relative;
+	background-color: #aaa;
+	padding: 1px;
+	margin: 2px;
+
+}
+#dialog-box .bar {
+	width: 0%;
+	/*background-color: green;*/
+	height:32px;
+	border-radius: 3px;
+}
+#dialog-box .percent { 
+	position: absolute;
+	font-weight: 200;
+	display:inline-block;
+	top:3px;
+}
+.busy_state {
+	background-color: gray;
+}
+.ok_state {
+	background-color: green;
+	color: white;
+}
+.ok_state:hover {
+	background-color: darkgreen;
+}
+.error_state {
+	background-color: red;
+	color: white;
+}
+.error_state:hover {
+	background-color: darkred;
 }
