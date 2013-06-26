@@ -9,7 +9,7 @@
 		@import "css/themes/smoothness-v1/smoothness-v1.css";
 		@import "css/TableTools_JUI.css";
 		@import "css/dialog.css";
-		@import "css/progress.css";
+		/*@import "css/progress.css";*/
 		</style>
 		<style type="text/css">
 		body {
@@ -65,6 +65,7 @@
 		<script type="text/javascript" charset="utf-8" src="js/ZeroClipboard.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/jquery-ui-1.10.3.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/underscore-min.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/dialog.js"></script>
 		<script>
 		(function() {
 			var method;
@@ -86,6 +87,8 @@
 				}
 			}
 		}());
+
+		var pDialog = new ProgressDialog();
 
 		var fTable;
 		var dialogTable;
@@ -151,8 +154,9 @@
 				} else {
 					if ( typeof(img.attr('alt')) === "undefined") return;
 					var message = img.attr('alt').split(',');
+					console.log(message);
 					var cls = 'errorDetails';
-					if (message[1].indexOf('ok') != -1) cls = 'okDetails';
+					if (message[1].indexOf('Error (0)') != -1) cls = 'okDetails';
 					dialogTable.fnOpen( this, getErrorTableHTML( message[0], message[1] ), cls );
 				}
 			});
@@ -164,63 +168,33 @@
 			table += '</table>';
 			return table;
 		}
-		function wrapDialogWithProgressBar() {
-			var divTitle = $('.dialog-title');
-			if ($('.progress').remove().length >0)
-				$('#dialog-box').prepend(divTitle);
-			$( '.dialog-title' ).wrap( '<div class="progress"><div class="bar"/></div>' );
-			$( '.dialog-title' ).addClass( 'percent' );
-			setDialogProgressPercentage( "0%" )
-		}
-		function popupDialog( title, message ) {
-			var maskHeight = $( document ).height();  
-			var maskWidth = $( window ).width();
-			var dialogTop =  ( maskHeight/3 ) - ($( '#dialog-box' ).height());  
-			var dialogLeft = ( maskWidth/2 ) - ($( '#dialog-box' ).width()/2); 
-			$( '#dialog-overlay' ).css({
-				height:maskHeight,
-				width:maskWidth
-			}).show();
-			$( '#dialog-box' ).css({
-				top:150,
-				left:dialogLeft
-			}).show();
-			setDialogTitle( title );
-			setDialogMessage( message );
-			setDialogProgressPercentage( "0%" );
-		}
-		function setDialogTitle( title ) {
-			$( '.dialog-title' ).html( title );
-		}
-		function setDialogMessage( message ) {
-			$( '#dialog-message' ).html( '<p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span><p>'+message );
-		}
-		function setDialogProgressPercentage( percent ) {
-			$( '.bar' ).width( percent );
-		}
-		function setDialogOkStatus( ok ) {
-			var okColor = "red";
-			if ( ok ) {
-				okColor = "green";
-			}
-			$( '.button' ).css('background-color', okColor);
-			$( '.bar' ).css('background-color', okColor);
-		}		 
 		function pollProgress() {
 			var d = new Date();
 			$.ajax({
+				type: 'GET',
 				dataType: 'json',
-				url: 'php/poll.php',
+				url: 'php/poll.php?target='+$('#hostname').text(),
 				cache: false,
 				success: updateDialogProgress
 			});
 		}
 		function updateDialogProgress( data, textStatus, jqXHR ) {
-			if ( data == null || data.length == 0) return;
-			for(var i = 0; i < data.length; i++) {
-				var cmd = data[ i ];
-				var icon = $( '#dialog-datatable td img', 0 )[i]; 
-				if ( typeof( icon ) === "undefined" ) return;
+			console.log(data);
+
+			if ( data != null ) {
+				var progress = data.length / dialogTable.fnGetData().length;
+				pDialog.setTitle( 'Instalando Componentes... '+data.length+' de '+dialogTable.fnGetData().length );
+				pDialog.setProgress( (progress*100)+'%' );
+
+				for(var i = 0; i < data.length; i++) {
+					var cmd = data[ i ];
+					var icon = $( '#dialog-datatable td img', 0 )[i]; 
+					setInstallData( cmd, icon );
+				}
+			}
+		}
+		function setInstallData( cmd, icon ) {
+			if ( typeof( icon ) !== "undefined" ) {
 				icon.alt = "Error ("+cmd.exitCode+"): "+cmd.status;
 				if ( cmd.exitCode == 0 ) {
 					icon.alt = "Instalado: Sí,"+icon.alt;
@@ -231,11 +205,7 @@
 					icon.src = 'images/'+progressImages[ 'installError' ];
 				}
 			}
-			var progress = data.length/dialogTable.fnGetData().length;
-			setDialogTitle('Instalando Componentes... '+data.length+' de '+dialogTable.fnGetData().length+'');
-			setDialogProgressPercentage((progress*100)+'%');
 		}
-
 		function createSelectOptionsFromArray( id, options , style) {
 			var optionTag = '';
 			for (var i = 0; i < options.length; i++) {
@@ -262,32 +232,37 @@
 		}
 		function submitFormCallback() {
 			var jsonData = buildJSON();
+			var args = "";
+			for( var i = 0; i < jsonData.length; i++ ) {
+				args += "id[]="+jsonData[i].id+"&";
+			}
 			var d = new Date();
 			$.ajax({
 				type: "POST",
-				url: 'php/packages.php?command=install', //?_='+d.getTime(),
+				url: 'php/packages.php?command=install&target='+$('#hostname').text()+'&'+args, //?_='+d.getTime(),
 				cache: false,
-				data: {
-					jsonArray: jsonData,
-					target: $('#hostname').text()
-				},
 				beforeSend: function( jqXHR, settings ){
-					popupDialog("Comenzando instalación...", "ATENCION: No apague el equipo ni recargue la página. Se está realizando la instalación de los paquetes seleccionados. Aguarde a que termine la instalación.");
-					wrapDialogWithProgressBar();
+					pDialog.show( 'Comenzando instalación...', 'ATENCION: No apague el equipo ni recargue la página. Se está realizando la instalación de los paquetes seleccionados. Aguarde a que termine la instalación.' );
 					progressPoll = setInterval( pollProgress, 1500 );
 					createDialogTable( [] );
 					for(var i = 0; i < jsonData.length; i++) {
-						$('#dialog-datatable').dataTable().fnAddData( [ jsonData[i].name, progressImages['installing'] ] )
+						$('#dialog-datatable').dataTable().fnAddData( [ jsonData[i].id, progressImages['installing'] ] )
 					}
+					pDialog.setStatus( "busy_state" );
 					return true;
 				},
 				success: function( data, textStatus, jqXHR ) {
-					console.log("succces install ajax");
-					updateDialogProgress( data, textStatus, jqXHR );
+
 					clearInterval( progressPoll );
-					setDialogMessage( 'La instalación terminó. Verifique la lista de abajo. En caso de haber errores seleccione la fila, lea el error y comuníquese con el administrador de sistemas.');
-					setDialogTitle( 'Instalación completada.' );
-					setDialogOkStatus( errorList.length == 0 );
+					updateDialogProgress( data, textStatus, jqXHR );
+					pDialog.setMessage( 'La instalación terminó. Verifique la lista de abajo. En caso de haber errores <b style="color: red;">haga click la fila</b>, lea el error y comuníquese con el administrador de sistemas.');
+					pDialog.setTitle( 'Instalación completada.' );
+					var status = "";
+					if ( errorList.length == 0 )
+						status = "ok_state";
+					else
+						status = "error_state";
+					pDialog.setStatus( status );
 				},
 				dataType: 'json'
 			});
@@ -358,8 +333,10 @@
 				]
 			});	       
 	        $('#form').submit( submitFormCallback );
-	        $('a.button').click(function () {
-	        	$('#dialog-overlay, #dialog-box').hide();
+	        $( '.button' ).click( function () {
+	        	if (! $(this).hasClass( 'busy_state' )) {
+	        		$('#dialog-overlay, #dialog-box').hide();
+	        	}
 	        	return false;
 	        });
 	    });
@@ -368,17 +345,20 @@
 
 	<body>
 		<?php
-		$hostname = (isset($_GET['hostname']))? $_GET['hostname'] : '';
+		$hostname = (isset($_GET['hostname']))? $_GET['hostname'] : gethostname();
 		echo '<div id="hostname" style="display:none;">'.$hostname.'</div>';
 		?>
 		
 		<div id="dialog-overlay"></div>
 		<div id="dialog-box">
-			<div class="dialog-title"></div>
+			<div class="progress">
+				<div class="bar"></div>
+				<div class="dialog-title"></div>
+			</div>
 			<div class="dialog-content">
 				<div id="dialog-message"></div>
 				<table id="dialog-datatable" style="font-size: 11px;" class="display"></table>
-				<a href="#" class="button">Ok</a>
+				<div class="button">Cerrar</div>
 			</div>
 		</div>
 		<form id="form">
