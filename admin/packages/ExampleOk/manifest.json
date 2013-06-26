@@ -1,0 +1,16 @@
+{
+    "ExampleOk": [
+        {
+            "id": "ExampleOk-0.0.1.i686",
+            "installer": "\\\\RCAPPSERVER\\packages\\ExampleOk\\example-ok.bat",
+            "installerArgs": "arg1 arg2",
+            "arch": "i686",
+            "os": [
+                "Windows 7"
+            ],
+            "version": "0.0.1",
+            "name": "ExampleOk",
+            "description": "This is an example returning OK as if the package was installed."
+        }
+    ]
+}
