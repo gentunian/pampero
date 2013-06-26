@@ -40,11 +40,11 @@
 		}
 
 		#table_id tr.row_selected1 td.sorting_1{
-			background-color: #95C297;
+			background-color: #65A297;
 		}
 
 		#table_id tr.row_selected1 {
-			background-color: #95C297;
+			background-color: #65A297;
 		}
 		.errorDetails {
 			background-color: red;
@@ -93,7 +93,6 @@
 		var fTable;
 		var dialogTable;
 		var progressPoll;
-		var errorList = [];
 		var progressImages = [];
 		progressImages[ 'installing' ] = "loading.gif";
 		progressImages[ 'installOk' ] = "ok.png";
@@ -200,7 +199,6 @@
 					icon.alt = "Instalado: Sí,"+icon.alt;
 					icon.src = 'images/'+progressImages[ 'installOk' ];
 				} else {
-					errorList.push( cmd );
 					icon.alt = "Instalado: No,"+icon.alt;
 					icon.src = 'images/'+progressImages[ 'installError' ];
 				}
@@ -257,11 +255,13 @@
 					updateDialogProgress( data, textStatus, jqXHR );
 					pDialog.setMessage( 'La instalación terminó. Verifique la lista de abajo. En caso de haber errores <b style="color: red;">haga click la fila</b>, lea el error y comuníquese con el administrador de sistemas.');
 					pDialog.setTitle( 'Instalación completada.' );
-					var status = "";
-					if ( errorList.length == 0 )
-						status = "ok_state";
-					else
-						status = "error_state";
+					var status = "ok_state";
+					for( var i = 0; i < data.length; i++ ) {
+						if ( data[i].exitCode != 0 ) {
+							status = "error_state";
+							break;
+						}
+					}
 					pDialog.setStatus( status );
 				},
 				dataType: 'json'
@@ -276,17 +276,19 @@
 				"oTableTools": {
 					"sRowSelect": "multi",
 					"aButtons": [ "select_all", "select_none" ],
-					"fnPreRowSelect": function ( e, nodes ) {
+					/*"fnPreRowSelect": function ( e, nodes ) {
+						console.log(e);
+						console.log(nodes);
 						var node = e.srcElement;
 						if ( typeof(node) === "undefined" ) node = e.target;
 						return !(node.nodeName.toLowerCase() === 'select');
-					},
+					},*/
 					"fnRowSelected": function( nodes ) {
-						$( 'input', nodes).attr( 'checked', true);
+						//$( 'input', nodes).attr( 'checked', true);
 						$( '#submit' ).removeAttr('disabled');
 					},
 					"fnRowDeselected": function( nodes ) {
-						$( 'input', nodes).attr( 'checked', false);
+						//$( 'input', nodes).attr( 'checked', false);
 						if (TableTools.fnGetInstance( 'table_id' ).fnGetSelected().length == 0) {
 							$( '#submit' ).attr( 'disabled', 'disabled' );
 						}
