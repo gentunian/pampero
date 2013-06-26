@@ -1,5 +1,7 @@
 <?php
 	
+	include_once( __DIR__ . "/../../admin/config.php" );
+
 	/**
 	*
 	*/
@@ -17,7 +19,7 @@
 			return "No se pudo realizar la operacion porque no se especificó maquina destino para la instalación.";
 
 		// Save the target in the SESSION data
-		$_SESSION['target'] = $hostname;
+		$_SESSION['target'] = wrapDomain( $hostname );
 
 		// Save the output argument in order to change it for list.php module
 		$outputType = $args['output'];
@@ -144,7 +146,6 @@
 	*
 	*/
 	function getTarget( $host ) {
-		include_once( __DIR__ . "/../../admin/config.php" );
 
 		// TODO: get credentials based on target for any user
 		$pwd = getHostPassword( $host );
