@@ -46,6 +46,6 @@ var options = arrangeOptions( WScript.Arguments );
 fOut = fso.GetTempName();
 fErr = fso.GetTempName();
 
-var exitCode = wsh.Run( "cmd.exe /C php-cgi -f ..\\..\\php\\packages.php command="+action+" "+options+" > "+fOut, 0, true);
+var exitCode = wsh.Run( "cmd.exe /C php-cgi -n -f ..\\..\\php\\packages.php command="+action+" "+options+" > "+fOut, 0, true);
 WScript.Echo( readFile( fOut ));
 WScript.Quit( exitCode );
