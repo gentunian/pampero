@@ -1,12 +1,18 @@
 <?php
 	
-	include_once( __DIR__ . "/../../admin/config.php" );
+	//
+	//
+	if ( !defined( 'FROM_PACKAGES' )) {
+		die( "Should be invoked by packages.php" );
+	}
+
 
 	/**
 	*
 	*/
 	function do_install( $args ) {
-		session_start();
+		//session_start();
+		my_session_( "start" );
 
 		// Include list.php in order to retrieve a list of available
 		// packages based on search arguments
@@ -43,7 +49,8 @@
 
 		// Store the array that defines our progress per session
 		$_SESSION['data'] = array();
-		session_write_close();
+		//session_write_close();
+		my_session_( "write_close" );
 
 		foreach( json_decode( $installJSON, true ) as $key => $value ) {
 			// Get an installer instance for this package data.
@@ -54,9 +61,10 @@
 			$target = getTarget( $hostname );
 
 			// Run the installation in target
-			$result[ $value['id'] ] = $installer->run( $value['installer'], $value['installerArgs'], $target );
+			$result[ $value['id'] ] = $installer->install( $value['installer'], $value['installerArgs'], $target );
 
-			session_start();
+			//session_start();
+			my_session_ ( "start" );
 			$_SESSION['data'][] = getDataArray(
 				$value['id'],
 				//count( $result ) - 1,
@@ -64,7 +72,8 @@
 				$result[ $value[ 'id' ]]->getExitCode(),
 				$result[ $value[ 'id' ]]->getStderr()
 				);
-			session_write_close();
+			//session_write_close();
+			my_session_( "write_close" );
 		}
 
 		// Restore the output option provided.
@@ -130,7 +139,9 @@
 	*
 	*/
 	function getInvokingHostname( $args ) {
-		$hostname = gethostbyaddr( $_SERVER['REMOTE_ADDR'] );
+		$hostname = FALSE;
+		if ( isset( $_SERVER['REMOTE_ADDR'] ))
+			$hostname = gethostbyaddr( $_SERVER['REMOTE_ADDR'] );
 
 		if ( $hostname == FALSE) {
 			if ( is_array( $args ) && isset( $args['target'] ))
@@ -208,101 +219,13 @@
 	*/
 	interface RemoteInstaller {
 
-		public function run( $command, $args, $target );
+		public function getHostOS();
+
+		public function getTargetOS();
+
+		public function install( $command, $args, $target );
+		//public function run( $command, $args, $target );
 		
-	}
-
-	/**
-	*
-	*/
-	class PsexecRemoteInstaller implements RemoteInstaller {
-		private $scriptFileName = NULL;
-		private $stderrFileName = NULL;
-		private $stdoutFileName = NULL;
-		private $TMP_DIR =  "/../../admin/tmp";
-
-		private function make_seed() {
-			list($usec, $sec) = explode(' ', microtime());
-			return (float) $sec + ((float) $usec * 100000);
-		}
-
-		private function createStderrFile() {
-			srand( $this->make_seed() );
-			$this->stderrFileName = tempnam( $this->TMP_DIR, "err");
-		}
-
-		private function createStdoutFile() {
-			srand( $this->make_seed() );
-			$this->stdoutFileName = tempnam( $this->TMP_DIR, "out");
-		}
-
-		private function createScriptFile() {
-			srand( $this->make_seed() );
-			$this->scriptFileName = tempnam( $this->TMP_DIR, "js");
-		}
-
-		private function escapePath( $path ) {
-			return str_replace( '\\', '\\\\', $path );
-		}
-
-		public function __destruct() {
-			// Deletes temporal files
-			unlink( $this->scriptFileName );
-			unlink( $this->stdoutFileName );
-			unlink( $this->stderrFileName );
-		}
-
-		public function __construct( $target = NULL) {
-			$this->TMP_DIR = __DIR__ . $this->TMP_DIR;
-			$this->createScriptFile();
-			$this->createStdoutFile();
-			$this->createStderrFile();
-
-			$stderrFile = $this->escapePath( $this->stderrFileName );
-			$stdoutFile = $this->escapePath( $this->stdoutFileName );
-
-			$this->target = $target;
-
-			$wscript = "var wsh = new ActiveXObject( 'WScript.Shell' );\n";
-			//$wscript .= "var fso = new ActiveXObject( 'Scripting.FileSystemObject' );\n\n";
-			$wscript .= "var psexecArgs = WScript.Arguments.Named;\n";
-			$wscript .= "var commandArgs = WScript.Arguments.Unnamed;\n\n";
-			$wscript .= "var cmd = 'cmd.exe /C psexec \\\\\\\\'+psexecArgs.Item('machine')+' -n 60 -u '+psexecArgs.Item('user')+' -p '+psexecArgs.Item('password')+' cmd.exe /C \"';\n";
-			$wscript .= "for (var i = 0; i < commandArgs.length; i++) {\n";
-			$wscript .= "\tvar arg = commandArgs.Item( i );\n";
-			$wscript .= "\tif ( arg.indexOf( \" \" ) >= 0 ) {\n";
-			$wscript .= "\t\targ = '\"'+arg+'\"';\n\t}\n";
-			$wscript .= "\tcmd += ' '+arg+' ';\n}\n";
-			$wscript .= "cmd += '\"';\n\n";
-			$wscript .= "var env = wsh.Environment(\"PROCESS\");\n";
-			$wscript .= "env(\"SEE_MASK_NOZONECHECKS\") = 1;\n";
-			$wscript .= "var exitCode = wsh.Run(cmd+\" > ".$stdoutFile." 2> ".$stderrFile."\", 0, true);\n";
-			$wscript .= "env.Remove(\"SEE_MASK_NOZONECHECKS\");\n";
-			$wscript .= "WScript.Quit( exitCode )\n";
-
-			$file = fopen( $this->scriptFileName, "w");
-			fwrite( $file, $wscript );
-			fclose( $file );
-		}
-
-		
-
-		public function run( $command, $args, $target ) {
-			$psexecOptions = "/user:".$target->user;
-			$psexecOptions .= " /password:".$target->password;
-			$psexecOptions .= " /machine:".$target->machine;
-
-			$string = "cscript //E:JScript ".$this->scriptFileName." $psexecOptions \"$command\" $args";
-
-			$process = popen( $string, "r" );
-			$exitCode = pclose( $process );
-
-			$exitString = iconv('CP1252', 'UTF-8//IGNORE', preg_replace('/\n/m', '', shell_exec("net helpmsg $exitCode")));
-			$stdout = iconv('CP1252', 'UTF-8', file_get_contents( $this->stdoutFileName ));
-			$stderr = iconv('CP1252', 'UTF-8//IGNORE', file_get_contents( $this->stderrFileName ));
-
-			return new CommandResult( $stdout, $stderr, $exitCode, $exitString );
-		}
 	}
 
 	/**
@@ -313,10 +236,11 @@
 		private $installers = NULL;
 
 		function getInstaller( $os ) {
-			if ( is_array( $os )) $os = implode( ',', $os );
+			if ( is_array( $os )) 
+				$os = implode( ',', $os );
 
 			if ( stripos( $os, "win") !== false ) {
-				$os = "windows";
+				$os = OS_WINDOWS;
 			}
 
 			if ( !isset( $installers[$os] )) {
@@ -327,10 +251,19 @@
 		}
 
 		function createInstallerForOS( $os ) {
-			if ( stripos( "windows", $os) !== FALSE ) {
-				return new PsexecRemoteInstaller();
+			$installer = constant( strtoupper(NATIVE_OS . '_' . $os . '_INSTALLER' ) );
+			if ( $installer != NULL ) {
+				$installer = new $installer();
 			}
+			return $installer;
 		}
 	}
 
-	?>
+	/**
+	*
+	*/
+	function __autoload( $class_name ) {
+		require_once( 'installers/' . $class_name . '.php');
+	}
+
+?>
