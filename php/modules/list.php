@@ -1,13 +1,10 @@
 	<?php
 
-	define( 'OS_UNKNOWN', 'Unknown' );
-	define( 'OS_WINDOWS_7', 'Windows 7' );
-	define( 'OS_WINDOWS_XP', 'Windows XP' );
-	define( 'OS_ARCH_X86', 'x86' );
-	define( 'OS_ARCH_X86_64', 'x86_64' );
-	define( 'MANIFEST_FILE', 'manifest.json' );
-	define( 'PACKAGES_DIR', __DIR__ . '/../../admin/packages' );
-
+	//
+	//
+	if ( !defined( 'FROM_PACKAGES' )) {
+		die( "Should be invoked by packages.php" );
+	}
 
 	/**
 	*
@@ -139,7 +136,7 @@
 	* False otherwise.
 	**/
 	function isPackageFile( $file ) {
-		if ( strcasecmp( MANIFEST_FILE, $file->getFilename()) != 0 )
+		if ( strcasecmp( MANIFEST_FILENAME, $file->getFilename()) != 0 )
 			return false;
 
 		json_decode( file_get_contents( $file ) );
