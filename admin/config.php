@@ -1,5 +1,45 @@
 <?php
+
+	define( 'UNIX_ADMIN', 'root' );
+	define( 'NT_ADMIN', 'Administrator' ); // localization?
+
+	define( 'NATIVE_OS', strtoupper(explode( ' ', php_uname(), 2)[0]) );
+
+	define( 'OS_UNKNOWN', 'Unknown' );
+	define( 'OS_WINDOWS', 'Windows' );
+	//define( 'OS_WINDOWS_7', 'Windows 7' );
+	//define( 'OS_WINDOWS_XP', 'Windows XP' );
+
+	define( 'OS_ARCH_X86', 'i686' );
+	define( 'OS_ARCH_X86_64', 'x86_64' );
+
+	define( 'MANIFEST_FILENAME', 'manifest.json' );
+
 	define( 'PASSWORD_FILE', __DIR__ . '/pwd' );
+	define( 'PACKAGES_DIR', __DIR__ . '/packages' );
+	define( 'TMP_DIR', __DIR__ . '/tmp' );
+
+	define( 'WINDOWS_WINDOWS_INSTALLER', 'PsexecRemoteInstaller' );
+
+
+
+	/**
+	* Helper method
+	*/
+	function my_session_( $sufix, $args = NULL ) {
+		if (! isCommandLineInterface() )
+			call_user_func( "session_$sufix", $args );
+	}
+
+
+	/**
+	*
+	**/
+	function isCommandLineInterface()
+	{
+		$str = php_sapi_name();
+		return ( stripos( $str, "cli" ) !== FALSE || stripos( $str, "cgi" ) !== FALSE );
+	}
 
 	/**
 	*
@@ -40,13 +80,13 @@
 	*
 	*/
 	function getHostPassword( $host ) {
-		$pwd = "pa55w0rd";
+		$pwd = "Pa55w0rd";
 
 		// If the file doesn't exists, do nothing
 		if ( file_exists( PASSWORD_FILE )) {
 			// Remove domain 
 			$host = wrapDomain( $host );
-			
+
 			// Get the file content for later processing
 			$contents = file_get_contents( PASSWORD_FILE );
 
