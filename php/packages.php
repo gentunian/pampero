@@ -5,6 +5,9 @@
 	* -------------
 	*
 	* php-cgi -f packages.php <module> [ {arg1=value1} ... ]
+	*
+	* or
+	* http://myserver/php/packages.php?command=<modcule>&arg1[]=value1&...
 	*/
 
 	// Include config.php
@@ -23,7 +26,16 @@
 
 		try {
 			// Set default value if 'output' option was not provided
+			// TODO: See TODO in do_it() function.
 			if (! isset( $_GET['output'] )) $_GET['output'] = "jsonplain";
+
+			// Try to get calling host
+			$hostnameTarget = Settings::getInvokingHostname( $args );
+			if ( !$hostnameTarget )
+				die( "No se pudo determinar el host de destino." );
+
+			// Set target 
+			$_GET['target'] = $hostnameTarget;
 
 			// Copy $_GET array
 			$args = $_GET;
@@ -42,10 +54,13 @@
 			// Prepend 'do_' as that is the format that modules should follow.
 			do_it( "do_" . $command, $args );
 
+		
 		} catch( Exception $e ) {
 			echo $e;
 		}
 	}
+
+	
 
 	/**
 	*
@@ -78,7 +93,15 @@
 		$result = call_user_func( $command, $args );
 
 		// Echo back the result
+		// TODO: output can vary depending on from where the request was made.
+		// AJAX request should output default plain JSON. 
+		// Standard HTTP request should output default JSON with <pre> </pre> and JSON_PRETTY_PRINT.
+		// Console request should output default to text output.
+		// All this output behaviour is managed by 'output' option.
+		// This should be the place to autodetect from where the request is made
+		// and in turn, if no 'output' option was provided, set it to something.
 		$output = call_user_func( $command."_output", $result, $args );
+
 		echo $output;
 	}
 
