@@ -1,107 +1,132 @@
 <?php
 
-	define( 'UNIX_ADMIN', 'root' );
-	define( 'NT_ADMIN', 'Administrator' ); // localization?
+	class Settings {
 
-	define( 'NATIVE_OS', strtoupper(explode( ' ', php_uname(), 2)[0]) );
+		// Instance variable will hold this class object
+		const INI_FILE = 'config.ini';
+		private static $instance = NULL;
+		private $iniContents = NULL;
 
-	define( 'OS_UNKNOWN', 'Unknown' );
-	define( 'OS_WINDOWS', 'Windows' );
-	//define( 'OS_WINDOWS_7', 'Windows 7' );
-	//define( 'OS_WINDOWS_XP', 'Windows XP' );
+		/**
+		* Prevent consctructor calling
+		*/
+		final private function __construct() {
+			if (! file_exists( self::$INI_FILE )) {
 
-	define( 'OS_ARCH_X86', 'i686' );
-	define( 'OS_ARCH_X86_64', 'x86_64' );
-
-	define( 'MANIFEST_FILENAME', 'manifest.json' );
-
-	define( 'PASSWORD_FILE', __DIR__ . '/pwd' );
-	define( 'PACKAGES_DIR', __DIR__ . '/packages' );
-	define( 'TMP_DIR', __DIR__ . '/tmp' );
-
-	define( 'WINDOWS_WINDOWS_INSTALLER', 'PsexecRemoteInstaller' );
-
-
-
-	/**
-	* Helper method
-	*/
-	function my_session_( $sufix, $args = NULL ) {
-		if (! isCommandLineInterface() )
-			call_user_func( "session_$sufix", $args );
-	}
-
-
-	/**
-	*
-	**/
-	function isCommandLineInterface()
-	{
-		$str = php_sapi_name();
-		return ( stripos( $str, "cli" ) !== FALSE || stripos( $str, "cgi" ) !== FALSE );
-	}
-
-	/**
-	*
-	*/
-	function setHostPassword( $host, $password ) {
-		// If the file doesn't exists, create it
-		if (! file_exists( PASSWORD_FILE ))
-			touch( PASSWORD_FILE );
-
-		// Get the file content for later processing
-		$contents = file_get_contents( PASSWORD_FILE );
-		
-		// Remove domain 
-		$host = wrapDomain( $host );
-
-		// Does this host already have a password?
-		if ( strstr( $contents, $host ) != FALSE ) {
-			// If don't, append it
-			$contents .= "$host=$password\n";
-
-		} else {
-			// If it does, replace it
-			$contents = preg_replace( "/^$host=.*$/i", "$host=$password", $contents );
+			}
+			$this->iniContents = parse_ini_file( self::$INI_FILE, true );
+			define( 'UNIX_ADMIN', $this->iniContents['General']['UNIX_ADMIN'] );
+			define( 'NT_ADMIN', $this->iniContents['General']['WINDOWS_ADMIN'] );
+			define( 'NATIVE_OS', strtoupper(explode( ' ', php_uname(), 2)[0]) );
+			define( 'OS_UNKNOWN', 'Unknown' );
+			define( 'OS_WINDOWS', 'Windows' );
+			define( 'OS_ARCH_X86', $this->iniContents['General']['OS_ARCH_X86'] );
+			define( 'OS_ARCH_X86_64', $this->iniContents['General']['OS_ARCH_X86_64'] );
+			define( 'MANIFEST_FILENAME', $this->iniContents['General']['MANIFEST_FILENAME'] );
+			define( 'PASSWORD_FILE', $this->iniContents['General']['PASSWORD_FILE'] );
+			define( 'PACKAGES_DIR', $this->iniContents['General']['PACKAGES_DIR'] );
+			define( 'TMP_DIR', $this->iniContents['General']['TMP_DIR'] );
+			define( 'WINDOWS_WINDOWS_INSTALLER', $this->iniContents['Installers']['WINDOWS_WINDOWS'] );
 		}
 
-		// Set the new file content
-		file_put_contents( PASSWORD_FILE, $contents );
-	}
+		/**
+		* Prevent object cloning
+		*/
+		final private function __clone() {}
 
-	/**
-	*
-	*/
-	function wrapDomain( $host ) {
-		return preg_replace( "/([^.]*).*/", "$1", $host);
-	}
+		/**
+		*
+		*/
+		final public static function getInstance() {
+			if ( self::$instance == NULL )
+				self::$instance = new Settings();
 
-	/**
-	*
-	*/
-	function getHostPassword( $host ) {
-		$pwd = "Pa55w0rd";
-
-		// If the file doesn't exists, do nothing
-		if ( file_exists( PASSWORD_FILE )) {
-			// Remove domain 
-			$host = wrapDomain( $host );
-
-			// Get the file content for later processing
-			$contents = file_get_contents( PASSWORD_FILE );
-
-			if ( preg_match( "/^$host=(.*)$/ixm", $contents, $match ) == 1 )
-				$pwd = $match[1];
+			return self::$instance;
 		}
 
-		return $pwd;		
+		/**
+		*
+		*/
+		private function getAdminUsername( $host ) {
+			// TODO: implement
+			return "Administrador";
+		}
+
+		private function getHostPassword( $host ) {
+			// TODO: implement
+			return "Pa55w0rd";
+		}
+
+		public function getTarget( $host ) {
+			$adminUser = self::getHostPassword( $host );
+			$adminPwd = self::getAdminUsername( $host );
+			return new Target( $adminUser, $adminPwd, $host );
+		}
+
+		public static function my_session_( $sufix, $args = NULL ) {
+			if (! isCommandLineInterface() )
+				call_user_func( "session_$sufix", $args );
+		}
+
+		public static function isCommandLineInterface() {
+			$str = php_sapi_name();
+			return ( stripos( $str, "cli" ) !== FALSE || stripos( $str, "cgi" ) !== FALSE );
+		}
+
+		/**
+		*
+		*/
+		public static function getInvokingHostname( $args, $removeDomain = true ) {
+			$hostname = "";
+			if ( isset( $_SERVER['REMOTE_ADDR'] ))
+				$hostname = gethostbyaddr( $_SERVER['REMOTE_ADDR'] );
+
+			if ( $hostname == "" ) {
+				if ( is_array( $args ) && isset( $args['target'] ))
+					$hostname = $args['target'];
+				else
+					$hostname = gethostname();
+			}
+
+			if ( $hostname && $removeDomain ) {
+				$hostname = self::removeDomainFromHostname( $hostname );
+			}
+
+			return $hostname;
+		}
+
+		/**
+		*
+		*/
+		private static function removeDomainFromHostname( $host ) {
+			return preg_replace( "/([^.]*).*/", "$1", $host);
+		}
 	}
 
 	/**
 	*
 	*/
-	function getAdminUsername( $host ) {
-		// TODO: Implement.
-		return "Administrador";
+	class Target {
+		private $user;
+		private $password;
+		private $machine;
+
+		public function __construct( $user, $password, $machine ) {
+			$this->user = $user;
+			$this->password = $password;
+			$this->machine = $machine;
+		}
+
+		public function getUser() {
+			return $this->user;
+		}
+
+		public function getPassword() {
+			return $this->password;
+		}
+
+		public function getMachineName() {
+			return $this->machine;
+		}
 	}
 ?>
