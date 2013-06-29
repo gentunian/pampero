@@ -11,34 +11,22 @@
 	*
 	*/
 	function do_install( $args ) {
-		//session_start();
-		my_session_( "start" );
+		if (! somethingToSearchFor( $args ))
+			return array();
+
+		// session_start();
+		Settings::my_session_( "start" );
 
 		// Include list.php in order to retrieve a list of available
 		// packages based on search arguments
 		require_once( "list.php" );
 
-		// Get the host that is invoking the action or the 
-		// target machine
-		$hostname = getInvokingHostname( $args );
-		if ( $hostname == FALSE )
-			return "No se pudo realizar la operacion porque no se especificó maquina destino para la instalación.";
-
 		// Save the target in the SESSION data
-		$_SESSION['target'] = wrapDomain( $hostname );
-
-		// Save the output argument in order to change it for list.php module
-		$outputType = $args['output'];
+		$_SESSION['target'] = $args['target'];
 
 		// Retrive the array list of packages based on arguments from list.php module
+		// do_list() returns an array based data.
 		$installData = do_list( $args );
-
-		// No matter if 'output' option was provided, we already saved that.
-		// Override the key in order to always have a JSON list of packages.
-		$args = array_merge( $args, array( "output" => "jsonplain" ));
-
-		// Get a json list from list.php module.
-		$installJSON = do_list_output( $installData, $args );
 
 		// Create an instance of InstallerCreator in order to retrieve
 		// an installer based on package data.
@@ -49,22 +37,20 @@
 
 		// Store the array that defines our progress per session
 		$_SESSION['data'] = array();
-		//session_write_close();
-		my_session_( "write_close" );
+		Settings::my_session_( "write_close" );
 
-		foreach( json_decode( $installJSON, true ) as $key => $value ) {
+		foreach( $installData /*json_decode( $installJSON, true )*/ as $key => $value ) {
 			// Get an installer instance for this package data.
 			$installer = $installerCreator->getInstaller( $value['os'] );
 
 			// Retrieve the target object based on hostname. This object should contain
 			// target credentials
-			$target = getTarget( $hostname );
+			$target = Settings::getTarget( $args['target'] );
 
 			// Run the installation in target
 			$result[ $value['id'] ] = $installer->install( $value['installer'], $value['installerArgs'], $target );
 
-			//session_start();
-			my_session_ ( "start" );
+			Settings::my_session_ ( "start" );
 			$_SESSION['data'][] = getDataArray(
 				$value['id'],
 				//count( $result ) - 1,
@@ -72,14 +58,27 @@
 				$result[ $value[ 'id' ]]->getExitCode(),
 				$result[ $value[ 'id' ]]->getStderr()
 				);
-			//session_write_close();
-			my_session_( "write_close" );
+			Settings::my_session_( "write_close" );
 		}
 
-		// Restore the output option provided.
-		$args['output'] = $outputType;
-
+		// Improve this?
 		return $_SESSION['data'];
+	}
+
+	/**
+	*
+	*/
+	function somethingToSearchFor( $args ) {
+		if ( is_array( $args ) ) {
+			return ( isset( $args['id'] ) ||
+				isset( $args['arch'] ) ||
+				isset( $args['os'] ) ||
+				isset( $args['description'] ) ||
+				isset( $args['installer'] ) ||
+				isset( $args['installerArgs'] ) ||
+				isset( $args['name'] ));
+		}
+		return false;
 	}
 
 	/**
@@ -134,38 +133,6 @@
 		return $output;
 	}
 
-
-	/**
-	*
-	*/
-	function getInvokingHostname( $args ) {
-		$hostname = FALSE;
-		if ( isset( $_SERVER['REMOTE_ADDR'] ))
-			$hostname = gethostbyaddr( $_SERVER['REMOTE_ADDR'] );
-
-		if ( $hostname == FALSE) {
-			if ( is_array( $args ) && isset( $args['target'] ))
-				$hostname = $args['target'];
-			else
-				$hostname = gethostname();
-		}
-
-		return $hostname;
-	}
-
-	/**
-	*
-	*/
-	function getTarget( $host ) {
-
-		// TODO: get credentials based on target for any user
-		$pwd = getHostPassword( $host );
-
-		$admin = getAdminUsername( $host );
-		return new Target( $admin, $pwd, $host );
-	}
-
-
 	/**
 	*
 	*/
@@ -199,20 +166,7 @@
 		}
 	}
 
-	/**
-	*
-	*/
-	class Target {
-		public $user;
-		public $password;
-		public $machine;
-
-		public function __construct( $user, $password, $machine ) {
-			$this->user = $user;
-			$this->password = $password;
-			$this->machine = $machine;
-		}
-	}
+	
 
 	/**
 	*
@@ -224,7 +178,6 @@
 		public function getTargetOS();
 
 		public function install( $command, $args, $target );
-		//public function run( $command, $args, $target );
 		
 	}
 
