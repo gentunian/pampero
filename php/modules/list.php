@@ -23,46 +23,6 @@
 	/**
 	*
 	*/
-	function do_list_output( $data, $args ) {
-		$output = "";
-		$outputType = strtolower( $args['output'] );
-
-		// Encode JSON if plain json is desired
-		if ( $outputType == "jsonplain" ) {
-			$output = json_encode( $data );
-		}
-
-	    // Encode JSON  with pretty print if html json is desired
-	    // and add extra <pre> tags.
-		else if ( $outputType == "jsonhtml" ) {
-			$output = "<pre>" . json_encode( $data, JSON_PRETTY_PRINT ) . "</pre>";
-
-		}
-
-		// The options left are html or console. HTML only adds pre tags
-		else {
-
-			$filterData = createFilter( $args );
-			$filterArray = $filterData['filter'];
-			$output = getStringOutput( $data, $filterData['options']['full'] );
-			$output .= "\n\nFiltro utilizado:\n".((count($filterArray)==0)? ("\tNinguno\n"): arrayOutput( $filterArray, "\t(%s => %s)\n" ));
-			$output .="\nOpciones del filtro:\n".arrayOutput( $filterData['options'], "\t(%s => %s)\n");
-
-			if ( $outputType == "html" ) {
-				$output = "<pre>".$output."</pre>";
-
-			} else if ( $args['output'] == "console" ) {
-
-			}
-		}
-
-		return $output;
-	}
-
-
-	/**
-	*
-	*/
 	function createFilter( $args ) {
 		// The array that will contains options
 		$options = array();
@@ -87,6 +47,18 @@
 		// Return our filter array
 		return $filter;
 	}
+	
+	/**
+	*
+	**/
+	function validSearchKey( $key ) {
+		$searchKeys = "id,installer,installerArgs,arch,os,name,description,";
+		foreach (explode(',', $searchKeys) as $value) {
+			if ( strcmp( $key, $value ) == 0 )
+				return true;
+		}
+		return false;
+	}
 
 	/**
 	*
@@ -100,17 +72,6 @@
 		return $result;
 	}
 
-	/**
-	*
-	**/
-	function validSearchKey( $key ) {
-		$searchKeys = "id,installer,installerArgs,arch,os,name,description,";
-		foreach (explode(',', $searchKeys) as $value) {
-			if ( strcmp( $key, $value ) == 0 )
-				return true;
-		}
-		return false;
-	}
 
 	/**
 	*
@@ -260,6 +221,45 @@
 	/**
 	*
 	*/
+	function do_list_output( $data, $args ) {
+		$output = "";
+		$outputType = strtolower( $args['output'] );
+
+		// Encode JSON if plain json is desired
+		if ( $outputType == "jsonplain" ) {
+			$output = json_encode( $data );
+		}
+
+	    // Encode JSON  with pretty print if html json is desired
+	    // and add extra <pre> tags.
+		else if ( $outputType == "jsonhtml" ) {
+			$output = "<pre>" . json_encode( $data, JSON_PRETTY_PRINT ) . "</pre>";
+
+		}
+
+		// The options left are html or console. HTML only adds pre tags
+		else {
+
+			$filterData = createFilter( $args );
+			$filterArray = $filterData['filter'];
+			$output = getStringOutput( $data, $filterData['options']['full'] );
+			$output .= "\n\nFiltro utilizado:\n".((count($filterArray)==0)? ("\tNinguno\n"): arrayOutput( $filterArray, "\t(%s => %s)\n" ));
+			$output .="\nOpciones del filtro:\n".arrayOutput( $filterData['options'], "\t(%s => %s)\n");
+
+			if ( $outputType == "html" ) {
+				$output = "<pre>".$output."</pre>";
+
+			} else if ( $args['output'] == "console" ) {
+
+			}
+		}
+
+		return $output;
+	}
+
+	/**
+	*
+	*/
 	function arrayOutput( $array, $mask, $key = "" ) {
 		$output = "";
 		foreach( $array as $field => $value ) {
@@ -271,18 +271,4 @@
 		return $output;
 	}
 
-	/*
-	*
-	**
-	function isCommandLineInterface()
-	{
-		return (php_sapi_name() != 'apache2handler');
-	}
-	*/
-
-	/**
-	* Call the main method.
-	*/
-//	echo getList($_GET);
-
-	?>
+?>
