@@ -1,5 +1,4 @@
 <?php
-
 	/**
 	* packages.php:
 	* -------------
@@ -12,48 +11,110 @@
 
 	// Include config.php
 	require_once( __DIR__ . '/../admin/config.php' );
+	require_once( __DIR__ . '/sysinfo/sysinfo.php' );
 
 	// Modules shouldn't be called directly. Use this constant
 	// to decide inside a module
 	define( 'FROM_PACKAGES', 'defined' );
-	
+	spl_autoload_register();
+	spl_autoload_register( function ( $class ) {
+		if ( class_exists( $class ))
+			return true;
+		$fileName = $class . ".php";
+		$it = new RecursiveDirectoryIterator( __DIR__ , FilesystemIterator::SKIP_DOTS );
+		foreach( new RecursiveIteratorIterator( $it, RecursiveIteratorIterator::LEAVES_ONLY ) as $file ) {
+			if ( $file->getFilename() == $fileName ) {
+				require_once( $file );
+				return true;
+			}
+		}
+		return false;
+	});
+
+
+	/**
+	*
+	*/
+	class Options {
+		private $store = [];
+		private $args = NULL;
+
+		public function __construct( $args, $options, $required = NULL ) {
+			$this->args = $args;
+
+			if (( $o = $this->hasRequiredOptions( $required )) !== true ) {
+				throw new Exception("Required option $o is missing", 1);
+			}
+				
+			// Set only valid arguments
+			foreach ($args as $key => $value) {
+				if ( array_key_exists( $key, $options ))
+					$this->__set( $key, $value );
+			}
+
+			$this->store = Utils::array_merge_non_null( $options, $this->store );
+		}
+
+		private function hasRequiredOptions( $required ) {
+			// If required options has been set, check for existence
+			if ( $required != NULL ) {
+				foreach ($required as $key => $value) {
+					if (! array_key_exists( $value, $this->args ))
+						return $value;
+				}
+			}
+			// Return true if no required option was set, or
+			// required already options exists
+			return true;
+		}
+
+		public function __get( $name ) {
+			return isset( $this->store[$name] ) ? $this->store[$name] : null;
+		}
+
+		public function __set( $name, $value ) {
+			$this->store[$name] = $value;
+		}
+
+		public function getActualOptions() {
+			return $this->store;
+		}
+
+		public function getArgs() {
+			return $this->args;
+		}
+	}
+
 	/**
 	*
 	**/
 	function parseArgs() {
-		// This array will yield commands to scripts
-		//$commandArray = buildCommandArray();
 
 		try {
-			// Set default value if 'output' option was not provided
-			// TODO: See TODO in do_it() function.
-			if (! isset( $_GET['output'] )) $_GET['output'] = "jsonplain";
 
-			// Try to get calling host
-			$hostnameTarget = Settings::getInvokingHostname( $args );
-			if ( !$hostnameTarget )
-				die( "No se pudo determinar el host de destino." );
+			$packagesOpts = new Options( 
+				$_GET,
+				array(
+					"command" => NULL,
+					"output" => "jsonplain",
+					"target" => Utils::getInvokingHostname()
+					),
+				array( "command" )
+				);
 
-			// Set target 
-			$_GET['target'] = $hostnameTarget;
+			// Create a credentials provider
+			$credProv = new MyCredentialsProvider();
 
-			// Copy $_GET array
-			$args = $_GET;
-
-			// Get the command to be ran.
-			$command = $args['command'];
-
-			// Import the module that has the same name as the command
-			do_import( $command );
-
-			// Remove the 'command' key and pass the rest of the arguments
-			// to be handled by the script
-			unset( $args['command'] );
-
-			// Call the command with the desired args.
-			// Prepend 'do_' as that is the format that modules should follow.
-			do_it( "do_" . $command, $args );
-
+			// Create a machine placeholder in order to retrieve
+			// host information
+			$machine = new Machine( $packagesOpts->target, $credProv );
+		    
+		    // Import the module that has the same name as the command
+			do_import( $packagesOpts->command );
+		    
+		    // Call the command with the desired args.
+	        // Prepend 'do_' as that is the format that modules should follow.
+			do_it( "do_" . $packagesOpts->command, $packagesOpts->getArgs() ); //$args );
 		
 		} catch( Exception $e ) {
 			echo $e;
@@ -67,28 +128,19 @@
 	*/
 	function do_import( $module ) {
 		$path = __DIR__ . "/modules/$module.php";
-		try {
-			if (! @include_once( $path ))
-				throw new Exception ( "No se pudo incluir el modulo $path" );
-			if (! file_exists( $path )) {
-				throw new Exception ( "No existe el archivo $path" );
-			} else {
-				require_once( $path ); 
-			}
-			return true;
-		}
-		catch(Exception $e) {    
-			//echo $e->getMessage();
-			//echo $e->getCode();
-			return false;
+		if (! include_once( $path ))
+			throw new Exception ( "No se pudo incluir el modulo $module desde $path" );
+		if (! file_exists( $path )) {
+			throw new Exception ( "No existe el archivo $module desde $path" );
+		} else {
+			require_once( $path ); 
 		}
 	}
 
 	/**
 	*
 	*/
-	function do_it( $command, $args = array()) {
-
+	function do_it( $command, $args = NULL ) {
 		// Call the function $command with $args arguments
 		$result = call_user_func( $command, $args );
 

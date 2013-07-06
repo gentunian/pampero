@@ -74,10 +74,10 @@
 
 		
 
-		public function install( $command, $args, $target ) {
-			$psexecOptions = "/user:".$target->getUser();
-			$psexecOptions .= " /password:".$target->getPassword();
-			$psexecOptions .= " /machine:".$target->getMachineName();
+		public function install( $command, $args, $machine, $credentials) {
+			$psexecOptions = "/user:".$credentials->getUser();
+			$psexecOptions .= " /password:".$credentials->getPassword();
+			$psexecOptions .= " /machine:".$machine;
 
 			$string = "cscript //E:JScript ".$this->scriptFileName." $psexecOptions \"$command\" $args";
 

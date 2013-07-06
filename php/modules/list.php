@@ -24,54 +24,52 @@
 	*
 	*/
 	function createFilter( $args ) {
-		// The array that will contains options
-		$options = array();
+		$listOpts = new Options(
+			$args,
+			array(
+				"option-output" => "jsonplain",
+				"option-exact" => false,
+				"option-full" => false,
+				"filter-id" => NULL,
+				"filter-name" => NULL,
+				"filter-arch" => NULL,
+				"filter-os" => NULL,
+				"filter-description" => NULL,
+				"filter-installer" => NULL,
+				"filter-installerArgs" => NULL
+				)
+			);
 
-		foreach( array('exact', 'full') as $key => $value) {
-			$options = array_merge($options, createBooleanOption( $args, $value ));
-		}
+		$opts = $listOpts->getActualOptions();
 
-		// Assign the options
-		$filter = array( "options" => $options);
-
-	    // Put only valid filter keys in the filter.
-		$filter['filter'] = array();
-
-		if ( $args != NULL && is_array( $args ) ) {
-			foreach ($args as $key => $value) {
-				if ( validSearchKey( $key ) )
-					$filter['filter'] = array_merge( array( $key => $value ), $filter['filter'] );
-			}
-		}
-
-		// Return our filter array
+		$filter = array( 
+			"options" => getArrayWithPrefixKeys( $opts, "option-" ),
+			"filter"  => getArrayWithPrefixKeys( $opts, "filter-" )
+			);
+		    
 		return $filter;
 	}
-	
+
 	/**
 	*
 	**/
-	function validSearchKey( $key ) {
-		$searchKeys = "id,installer,installerArgs,arch,os,name,description,";
-		foreach (explode(',', $searchKeys) as $value) {
-			if ( strcmp( $key, $value ) == 0 )
-				return true;
+	function getArrayWithPrefixKeys( $array, $prefix) {
+		$result = array();
+		foreach ($array as $key => $value) {
+			if ( keyHasPrefix( $key, $prefix ) == 0) {
+				$result[str_replace( $prefix, "", $key )] = $value;
+			}
 		}
-		return false;
-	}
-
-	/**
-	*
-	*/
-	function createBooleanOption( $args, $option, $default = false ) {
-		$result = array( $option => $default );
-	
-		if ( isset( $args[ $option ] ) && preg_match("/(yes|1|true|on)/", $args[ $option ]) )
-			$result[$option] = true;
 
 		return $result;
 	}
 
+	/**
+	*
+	**/
+	function keyHasPrefix( $key, $prefixKey ) {
+		return strncmp( $key, $prefixKey, strlen( $prefixKey ));
+	}
 
 	/**
 	*
@@ -222,8 +220,10 @@
 	*
 	*/
 	function do_list_output( $data, $args ) {
+		$filterData = createFilter( $args );
+
 		$output = "";
-		$outputType = strtolower( $args['output'] );
+		$outputType = $filterData->output;
 
 		// Encode JSON if plain json is desired
 		if ( $outputType == "jsonplain" ) {
@@ -240,7 +240,6 @@
 		// The options left are html or console. HTML only adds pre tags
 		else {
 
-			$filterData = createFilter( $args );
 			$filterArray = $filterData['filter'];
 			$output = getStringOutput( $data, $filterData['options']['full'] );
 			$output .= "\n\nFiltro utilizado:\n".((count($filterArray)==0)? ("\tNinguno\n"): arrayOutput( $filterArray, "\t(%s => %s)\n" ));
