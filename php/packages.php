@@ -11,7 +11,7 @@
 
 	// Include config.php
 	require_once( __DIR__ . '/../admin/config.php' );
-	require_once( __DIR__ . '/sysinfo/sysinfo.php' );
+
 
 	// Modules shouldn't be called directly. Use this constant
 	// to decide inside a module
@@ -38,33 +38,70 @@
 	class Options {
 		private $store = [];
 		private $args = NULL;
+		private $optional = NULL;
+		private $required = NULL;
 
-		public function __construct( $args, $options, $required = NULL ) {
-			$this->args = $args;
+		public function __construct( $args, $optional, $required = NULL ) {
+			// Save and convert $args to an associative array.
+			$this->args = $this->toAssoc($args);
+			$this->optional = $optional;
+			$this->required = $required;
 
-			if (( $o = $this->hasRequiredOptions( $required )) !== true ) {
-				throw new Exception("Required option $o is missing", 1);
+			// Throw an exception if required arguments are missing
+			if (( $o = $this->hasRequiredArguments() ) !== true ) {
+				throw new Exception("Required argument '$o' is missing", 1);
 			}
-				
-			// Set only valid arguments
-			foreach ($args as $key => $value) {
-				if ( array_key_exists( $key, $options ))
-					$this->__set( $key, $value );
+			
+			// Values from $required, if any, are for sure in $args, so
+			// get the values from $args and store them.
+			foreach ($required as $key => $value) {
+				// $value is the required argument name and $arg[$value] its value.
+				$this->__set( $value,  $this->args[$value] );
 			}
 
-			$this->store = Utils::array_merge_non_null( $options, $this->store );
+			// For each optional argument store the default value
+			// if argument is missing.
+			foreach ($optional as $key => $value) {
+				// Check for existence in $args and save the value
+				// from it is exists. Else, save the default value
+				if ( array_key_exists( $key, $this->args ))
+					$optValue = $this->args[$value];
+				else
+					$optValue = $value;
+				$this->__set( $key, $value );
+			}
 		}
 
-		private function hasRequiredOptions( $required ) {
-			// If required options has been set, check for existence
-			if ( $required != NULL ) {
-				foreach ($required as $key => $value) {
-					if (! array_key_exists( $value, $this->args ))
-						return $value;
+		// Returns an associative array with keys set as arguments.
+		// Each value that corresponds to a numeric key is splited by
+		// the equal sign. The first part is set as the key, and the
+		// rest of it as its value.
+		private function toAssoc( $array ) {
+			$copy = $array;
+			foreach ($array as $key => $value) {
+				if ( is_numeric( $key )) {
+					$split = explode( "=", $value, 2 );
+					$copy[$split[0]] = (isset( $split[1] ))? $split[1] : "";
+					unset( $copy[$key] );
 				}
 			}
-			// Return true if no required option was set, or
-			// required already options exists
+			return $copy;
+		}
+
+		// Returns true wether or not $this->args has the arguments listed
+		// in $required.
+		private function hasRequiredArguments() {
+			// If required arguments has been set, check for any existence
+			// of them.
+			if ( $this->required != NULL ) {
+				foreach ($this->required as $key => $value) {
+					if (! array_key_exists( $value, $this->args )) {
+						return $value;
+					}
+				}
+			}
+			// Return true if no required argument was set, or
+			// required arguments already exists
 			return true;
 		}
 
@@ -76,12 +113,25 @@
 			$this->store[$name] = $value;
 		}
 
-		public function getActualOptions() {
+		// Returns all options that are in both,
+		// optional and required sets that has been processed
+		// and represents the actual values of the options.
+		public function getOptions() {
 			return $this->store;
 		}
 
-		public function getArgs() {
-			return $this->args;
+		// Returns all options including optional and required arguments
+		// and those that aren't in any of these sets that has been processed
+		// and represents the actual values of the options.
+		public function getAllOptions() {
+			return array_merge( $this->args, $this->store );
+		}
+
+		// Returns all options that are not in the required and optional
+		// sets that has been processed
+		// and represents the actual values of the options.
+		public function getDiscardOptions() {
+			return array_diff_assoc( $this->args, $this->store );
 		}
 	}
 
@@ -89,18 +139,30 @@
 	*
 	**/
 	function parseArgs() {
-
+		global $argv;
+		if (! is_null( $argv ))
+			$args = $argv;
+		else
+			$args = $_GET;
+		
 		try {
 
-			$packagesOpts = new Options( 
-				$_GET,
+			$packagesOpts = new Options(
+				// $argv or $_GET
+				$args,
+				// List of optional arguments (keys) with default values.
+				// Missing arguments will be assigned to default values.
 				array(
-					"command" => NULL,
 					"output" => "jsonplain",
 					"target" => Utils::getInvokingHostname()
 					),
+				// Required options, if any.
 				array( "command" )
 				);
+
+			var_dump($packagesOpts->getAllOptions());
+			var_dump($packagesOpts->getOptions());
+			var_dump($packagesOpts->getDiscardOptions());
 
 			// Create a credentials provider
 			$credProv = new MyCredentialsProvider();
@@ -117,7 +179,7 @@
 			do_it( "do_" . $packagesOpts->command, $packagesOpts->getArgs() ); //$args );
 		
 		} catch( Exception $e ) {
-			echo $e;
+			echo "Error: ".$e->getMessage()."\n";
 		}
 	}
 
@@ -156,7 +218,6 @@
 
 		echo $output;
 	}
-
 
 	parseArgs();
 
