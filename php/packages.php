@@ -36,42 +36,56 @@
 	*
 	*/
 	class Options {
-		private $store = [];
+
+		// $store holds the valid arguments this object needs to have
+		private $store = NULL;
+		// $args should holds the arguments passed by to be evaluated
 		private $args = NULL;
+		// $optional are the optional argument this objects should handle
 		private $optional = NULL;
+		// $required are the required argument this objects should handle
 		private $required = NULL;
 
-		public function __construct( $args, $optional, $required = NULL ) {
-			// Save and convert $args to an associative array.
-			$this->args = $this->toAssoc($args);
-			$this->optional = $optional;
-			$this->required = $required;
+		/**
+		* 
+		*/
+		public function __construct( $args, $optional, $required = NULL, $strictSet = false ) {
+			if (! ( is_array( $args ) && is_array( $optional )))
+				throw new InvalidArgumentException("Array required");
+
+			if (! (is_null( $optional ) || is_array( $optional )))
+				throw new InvalidArgumentException("Array required");
+
+			// Save and convert to an associative array.
+			$this->args = $this->toAssoc( $args );
+			$this->optional = $this->toAssoc( $optional );
+			$this->required = $this->toAssoc( $required );
 
 			// Throw an exception if required arguments are missing
 			if (( $o = $this->hasRequiredArguments() ) !== true ) {
 				throw new Exception("Required argument '$o' is missing", 1);
 			}
-			
-			// Values from $required, if any, are for sure in $args, so
-			// get the values from $args and store them.
-			foreach ($required as $key => $value) {
-				// $value is the required argument name and $arg[$value] its value.
-				$this->__set( $value,  $this->args[$value] );
+
+	        // Merge both optional and required arguments
+			$argsTemplate = array_merge( $this->optional, $this->required );
+
+			// Work with the required and optional arguments setting the
+			// correct value for each option using the template
+			foreach( $this->args as $key => $value ) {
+				$this->setKeyValueInArray( $key, $value, $argsTemplate );
 			}
 
-			// For each optional argument store the default value
-			// if argument is missing.
-			foreach ($optional as $key => $value) {
-				// Check for existence in $args and save the value
-				// from it is exists. Else, save the default value
-				if ( array_key_exists( $key, $this->args ))
-					$optValue = $this->args[$value];
-				else
-					$optValue = $value;
-				$this->__set( $key, $value );
+			// Copy the modified template to be the actual argument list
+			$this->store = $argsTemplate;
+
+			if ( $strictSet && count( $this->getDiscardOptions() ) != 0 ) {
+				throw new Exception("Arguments are invalid ('". implode("', '", array_keys( $this->getDiscardOptions()) )."')");
 			}
+
 		}
 
+		// TODO: FIX and change in order to allow required arguments with category
+		//
 		// Returns an associative array with keys set as arguments.
 		// Each value that corresponds to a numeric key is splited by
 		// the equal sign. The first part is set as the key, and the
@@ -95,8 +109,8 @@
 			// of them.
 			if ( $this->required != NULL ) {
 				foreach ($this->required as $key => $value) {
-					if (! array_key_exists( $value, $this->args )) {
-						return $value;
+					if (! array_key_exists( $key, $this->args )) {
+						return $key;
 					}
 				}
 			}
@@ -105,12 +119,25 @@
 			return true;
 		}
 
-		public function __get( $name ) {
-			return isset( $this->store[$name] ) ? $this->store[$name] : null;
+		//
+		private function setKeyValueInArray( $findKey, $newValue, &$array ) {
+			foreach ( $array as $key => &$value ) {
+				if ( is_array( $value )) {
+					$this->setKeyValueInArray( $findKey, $newValue, $value );
+				} elseif ( $key == $findKey ) {
+					$value = $newValue;
+				}
+			}
+			unset( $value );
 		}
 
-		public function __set( $name, $value ) {
-			$this->store[$name] = $value;
+		// TODO: CHECK FOR KEY EXISTENCE
+		public function getOption( $dsc ) {
+			$split = explode( "-", $dsc );
+			$value = $this->store[$split[0]];
+			for( $i = 1; $i < count( $split ); $i++ )
+				$value = $value[$split[$i]];
+			return $value;
 		}
 
 		// Returns all options that are in both,
@@ -131,7 +158,8 @@
 		// sets that has been processed
 		// and represents the actual values of the options.
 		public function getDiscardOptions() {
-			return array_diff_assoc( $this->args, $this->store );
+			//return array_diff_assoc( $this->args, $this->store );
+			return $this->args;
 		}
 	}
 
@@ -219,6 +247,6 @@
 		echo $output;
 	}
 
-	parseArgs();
+	//parseArgs();
 
 ?>
