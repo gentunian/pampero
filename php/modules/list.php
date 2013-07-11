@@ -92,10 +92,11 @@
 	    private function filterMatchArray( $array, $filterArray, $exact = false ) {
 	    	$matches = 0;
 
-	    	foreach ( array_keys( $filterArray ) as $key ) {
-	    		if ( $this->shouldFilterArray( $this->wrapArray( $array[$key] ), $this->wrapArray( $filterArray[$key] ), $exact ) ) {
+	    	foreach( $filterArray as $key => $value ) {
+	    		$array1 = $this->wrapArray( $array[$key] );
+	    		$array2 = $this->wrapArray( $value );
+	    		if ( $array2[0] == NULL || $array2[0] == "*" || $this->shouldFilterArray( $array1, $array2, $exact ))
 	    			$matches++;
-	    		}
 	    	}
 
 	    	return ( count( $filterArray ) == $matches );
@@ -157,8 +158,11 @@
 	*
 	*/
 	function do_list( $args = NULL ) {
+
 		// Create the filter in order to filter output
 		$filterData = createFilter( $args );
+
+		
 
 		// Create a PackageFinder object passing by the filter, the path
 		// where to find packages and the manifest file name it should find.
@@ -174,70 +178,49 @@
 	/**
 	*
 	*/
-	function createFilter( $args ) {
-		$listOpts = new Options(
-			$args,
-			array(
-				"option-output" => "jsonplain",
-				"option-exact" => false,
-				"option-full" => false,
-				"filter-id" => NULL,
-				"filter-name" => NULL,
-				"filter-arch" => NULL,
-				"filter-os" => NULL,
-				"filter-description" => NULL,
-				"filter-installer" => NULL,
-				"filter-installerArgs" => NULL
-				)
+	function createFilter( $args) {
+		$opts = new Options(
+        	$args,
+        	array(
+        		// Category named "options". This will group
+        		// below arguments together within the "options"
+        		// category, i.e.:
+        		//        $listOpts->getOption("options");
+        		// in order to get 'output' in options category do:
+        		//        $listOpts->getOption("options-output");
+        		"options" => array(
+        			"target" => NULL,
+        			"full" => false,
+        			"exact" => false,
+        			"output" => "jsonplain"
+        			),
+        		"filter" => array(
+        			"id" => NULL,
+        			"name" => NULL,
+        			"arch" => NULL,
+        			"os" => NULL,
+        			"description" => NULL,
+        			"installer" => NULL,
+        			"installerArgs" => NULL
+        			)
+        		)
+        	);
+
+	    // Create a credentials provider
+		$credProv = new MyCredentialsProvider();
+
+		// Create a machine placeholder in order to retrieve
+		// host information
+		$machine = new Machine( $opts->getOption( "options-target" ), $credProv );
+
+		$filter = array(
+			"options" => $opts->getOption("options"),
+			"filter" => $opts->getOption("filter")
 			);
 
-		$opts = $listOpts->getActualOptions();
-
-		$filter = array( 
-			"options" => getArrayWithPrefixKeys( $opts, "option-" ),
-			"filter"  => getArrayWithPrefixKeys( $opts, "filter-" )
-			);
-		    
 		return $filter;
 	}
 
-	/**
-	*
-	**/
-	function getArrayWithPrefixKeys( $array, $prefix) {
-		$result = array();
-		foreach ($array as $key => $value) {
-			if ( keyHasPrefix( $key, $prefix ) == 0) {
-				$result[str_replace( $prefix, "", $key )] = $value;
-			}
-		}
-
-		return $result;
-	}
-
-	/**
-	*
-	**/
-	function keyHasPrefix( $key, $prefixKey ) {
-		return strncmp( $key, $prefixKey, strlen( $prefixKey ));
-	}
-
-	/**
-	*
-	*/
-	function getStringOutput( $jsonArray, $full ) {
-		$output = sprintf( "\nSe encontraron %d paquete(s):\n", count( $jsonArray ));
-		$id = ( $full )? "" : "id";
-
-		foreach ( $jsonArray as $key => $installersArray ) {
-			$output .= sprintf( "\nItem %s:\n%s", $key, str_repeat('-', strlen("item $key:")) );
-			ksort( $installersArray );
-			$output .= arrayOutput( $installersArray, "\n%15s: %s", $id );
-		}
-
-		return $output;
-	}
-	
 	/**
 	*
 	*/
@@ -274,6 +257,24 @@
 
 		return $output;
 	}
+
+	/**
+	*
+	*/
+	function getStringOutput( $jsonArray, $full ) {
+		$output = sprintf( "\nSe encontraron %d paquete(s):\n", count( $jsonArray ));
+		$id = ( $full )? "" : "id";
+
+		foreach ( $jsonArray as $key => $installersArray ) {
+			$output .= sprintf( "\nItem %s:\n%s", $key, str_repeat('-', strlen("item $key:")) );
+			ksort( $installersArray );
+			$output .= arrayOutput( $installersArray, "\n%15s: %s", $id );
+		}
+
+		return $output;
+	}
+	
+	
 
 	/**
 	*
