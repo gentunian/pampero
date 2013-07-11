@@ -3,10 +3,15 @@
 	* packages.php:
 	* -------------
 	*
-	* php-cgi -f packages.php <module> [ {arg1=value1} ... ]
+	* php packages.php command=<module> [ {arg1=value1} ... ]
+	*
+	* or	
+	*
+	* php-cgi packages.php command=<module> [ arg1=value1 ... ]
 	*
 	* or
-	* http://myserver/php/packages.php?command=<modcule>&arg1[]=value1&...
+	*
+	* http://myserver/php/packages.php?command=<module>&arg1[]=value1&...
 	*/
 
 	// Include config.php
@@ -47,32 +52,46 @@
 		private $required = NULL;
 
 		/**
-		* 
+		* This will fail if:
+		*    . required options are not found in $args
+		*    . strict set is true and $args does not match that description
+		*
+		* It wont fail if:
+		*    . strict set is false and required options is NULL, it simply
+		*      will leave unused $args in $this->args.
 		*/
 		public function __construct( $args, $optional, $required = NULL, $strictSet = false ) {
 			if (! ( is_array( $args ) && is_array( $optional )))
-				throw new InvalidArgumentException("Array required");
+				throw new InvalidArgumentException( "Array required" );
 
-			if (! (is_null( $optional ) || is_array( $optional )))
-				throw new InvalidArgumentException("Array required");
+			if (! (is_null( $required ) || is_array( $required )))
+				throw new InvalidArgumentException( "Array required" );
 
 			// Save and convert to an associative array.
 			$this->args = $this->toAssoc( $args );
 			$this->optional = $this->toAssoc( $optional );
-			$this->required = $this->toAssoc( $required );
+			if (! is_null( $required )) {
+				$this->required = $this->toAssoc( $required );
 
-			// Throw an exception if required arguments are missing
-			if (( $o = $this->hasRequiredArguments() ) !== true ) {
-				throw new Exception("Required argument '$o' is missing", 1);
+			    // Throw an exception if required arguments are missing
+				if (( $o = $this->hasRequiredArguments() ) !== true )
+					throw new Exception("Required argument '$o' is missing", 1);
+				// Merge both optional and required arguments
+				$argsTemplate = array_merge( $this->optional, $this->required );
+
+			} else {
+				$argsTemplate = array_merge( $this->optional );
 			}
-
-	        // Merge both optional and required arguments
-			$argsTemplate = array_merge( $this->optional, $this->required );
 
 			// Work with the required and optional arguments setting the
 			// correct value for each option using the template
 			foreach( $this->args as $key => $value ) {
-				$this->setKeyValueInArray( $key, $value, $argsTemplate );
+				$changed = $this->setKeyValueInArray( $key, $value, $argsTemplate );
+
+				// if the argument was stored, remove it from $args
+				if ( $changed ) {
+					unset( $this->args[$key] );
+				}
 			}
 
 			// Copy the modified template to be the actual argument list
@@ -107,11 +126,9 @@
 		private function hasRequiredArguments() {
 			// If required arguments has been set, check for any existence
 			// of them.
-			if ( $this->required != NULL ) {
-				foreach ($this->required as $key => $value) {
-					if (! array_key_exists( $key, $this->args )) {
-						return $key;
-					}
+			foreach ($this->required as $key => $value) {
+				if (! array_key_exists( $key, $this->args )) {
+					return $key;
 				}
 			}
 			// Return true if no required argument was set, or
@@ -121,17 +138,21 @@
 
 		//
 		private function setKeyValueInArray( $findKey, $newValue, &$array ) {
+			$changed = false;
 			foreach ( $array as $key => &$value ) {
 				if ( is_array( $value )) {
-					$this->setKeyValueInArray( $findKey, $newValue, $value );
-				} elseif ( $key == $findKey ) {
+					$changed = $this->setKeyValueInArray( $findKey, $newValue, $value );
+				} elseif ( $changed = ( $key == $findKey )) {
 					$value = $newValue;
 				}
 			}
 			unset( $value );
+			return $changed;
 		}
 
 		// TODO: CHECK FOR KEY EXISTENCE
+		//
+		// Returns the option or option category based on dsc
 		public function getOption( $dsc ) {
 			$split = explode( "-", $dsc );
 			$value = $this->store[$split[0]];
@@ -147,18 +168,10 @@
 			return $this->store;
 		}
 
-		// Returns all options including optional and required arguments
-		// and those that aren't in any of these sets that has been processed
-		// and represents the actual values of the options.
-		public function getAllOptions() {
-			return array_merge( $this->args, $this->store );
-		}
-
-		// Returns all options that are not in the required and optional
-		// sets that has been processed
-		// and represents the actual values of the options.
-		public function getDiscardOptions() {
-			//return array_diff_assoc( $this->args, $this->store );
+		// Returns the options that aren't used by this object. When using
+		// $strictSet == true and constructor doesn't throw an exception
+		// then, this set should be empty.
+		public function getDisposedOptions() {
 			return $this->args;
 		}
 	}
@@ -174,37 +187,39 @@
 			$args = $_GET;
 		
 		try {
-
+			// Create options for this module based on the object description passed in
+			// to the constructor. 
 			$packagesOpts = new Options(
 				// $argv or $_GET
 				$args,
 				// List of optional arguments (keys) with default values.
 				// Missing arguments will be assigned to default values.
 				array(
-					"output" => "jsonplain",
-					"target" => Utils::getInvokingHostname()
+					"output" => "jsonplain"
+					//"target" => Utils::getInvokingHostname()
 					),
 				// Required options, if any.
 				array( "command" )
 				);
 
-			var_dump($packagesOpts->getAllOptions());
-			var_dump($packagesOpts->getOptions());
-			var_dump($packagesOpts->getDiscardOptions());
-
+			// In order to continue, try creating a Machine object instance.
+			// If we can create it, then, other modules will.
 			// Create a credentials provider
-			$credProv = new MyCredentialsProvider();
+			//$credProv = new MyCredentialsProvider();
 
 			// Create a machine placeholder in order to retrieve
 			// host information
-			$machine = new Machine( $packagesOpts->target, $credProv );
+			//$machine = new Machine( $packagesOpts->getOption( "target" ), $credProv );
 		    
+		    // Get the command module to import
+		    $command = $packagesOpts->getOption( "command" );
+
 		    // Import the module that has the same name as the command
-			do_import( $packagesOpts->command );
+			do_import( $command );
 		    
 		    // Call the command with the desired args.
 	        // Prepend 'do_' as that is the format that modules should follow.
-			do_it( "do_" . $packagesOpts->command, $packagesOpts->getArgs() ); //$args );
+			do_it( "do_" . $command, $args );
 		
 		} catch( Exception $e ) {
 			echo "Error: ".$e->getMessage()."\n";
@@ -247,6 +262,6 @@
 		echo $output;
 	}
 
-	//parseArgs();
+	parseArgs();
 
 ?>
