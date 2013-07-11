@@ -30,19 +30,21 @@
 				return $wmi_call->Domain;
 		}
 
-		function getOperatingSystem() {
+		function getOSName() {
 			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call) {
 				$name =  explode('|', $wmi_call->Name, 2)[0];
-				$version = $wmi_call->Version;
-				$arch = $wmi_call->OSArchitecture;
-				return new OperatingSystem( $name, $version, $arch );
+				return $name;
 			}
 		}
 
-		function getSystemArchitecture() {
-			foreach( $this->sysinfo['Win32Product'] as $wmi_call ) {
-				echo "\n".$wmi_call->Name. " - " .$wmi_call->Version ."\n";
-			}
+		function getOSVersion() {
+			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
+				return $wmi_call->Version;
+		}
+
+		function getOSArchitecture() {
+			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
+				return $wmi_call->OSArchitecture;
 		}
 	}
 ?>
