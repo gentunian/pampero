@@ -233,7 +233,7 @@
 	*/
 	function do_import( $module ) {
 		$path = __DIR__ . "/modules/$module.php";
-		if (! include_once( $path ))
+		if (! @include_once( $path ))
 			throw new Exception ( "No se pudo incluir el modulo $module desde $path" );
 		if (! file_exists( $path )) {
 			throw new Exception ( "No existe el archivo $module desde $path" );
