@@ -32,8 +32,8 @@
 
 		function getOSName() {
 			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call) {
-				$name =  explode('|', $wmi_call->Name, 2)[0];
-				return $name;
+				$fullname =  explode('|', $wmi_call->Name, 2)[0];
+				return $fullname;
 			}
 		}
 
@@ -44,7 +44,8 @@
 
 		function getOSArchitecture() {
 			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
-				return $wmi_call->OSArchitecture;
+				$arch = $wmi_call->OSArchitecture;
+			return preg_replace( "/64.*/", "x86_64", $arch);
 		}
 	}
 ?>
