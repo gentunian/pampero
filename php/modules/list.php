@@ -130,6 +130,11 @@
     	*
     	*/
     	private function shouldFilterValue( $value1, $value2, $exact ) {
+    		if ( strlen($value1) < strlen($value2) ) {
+    			$temp = $value2;
+    			$value2 = $value1;
+    			$value1 = $temp;
+    		}
     		if ( $exact ) {
     			return ( strcasecmp( $value1, $value2 ) == 0 );
     		} else {
@@ -161,8 +166,6 @@
 
 		// Create the filter in order to filter output
 		$filterData = createFilter( $args );
-
-		
 
 		// Create a PackageFinder object passing by the filter, the path
 		// where to find packages and the manifest file name it should find.
@@ -206,18 +209,40 @@
         		)
         	);
 
-	    // Create a credentials provider
-		$credProv = new MyCredentialsProvider();
-
-		// Create a machine placeholder in order to retrieve
-		// host information
-		$machine = new Machine( $opts->getOption( "options-target" ), $credProv );
-
+		// Create the filter array based on options
 		$filter = array(
 			"options" => $opts->getOption("options"),
 			"filter" => $opts->getOption("filter")
 			);
 
+		// Get the target (if any)
+		$target = $opts->getOption( "options-target");
+
+		// If target was provided, we then filter the results based on target info.
+		// If don't, we filter based on filter options.
+		if ( $target != NULL ) {
+	        // Create a credentials provider
+			$credProv = new MyCredentialsProvider();
+
+		    // Create a machine placeholder in order to retrieve
+		    // host information
+			$machine = new Machine( $target, $credProv );
+
+			// Get system information
+			$sysinfo = $machine->getSystemInfo();
+
+			// Update filter information based on target but only if some options
+			// were not provided. This allows us to add an option that could
+			// override target architechture (for example, 32bit applications can
+			// be installed in some 64bit OSes).
+			if ( $filter['filter']['os'] == NULL )
+				$filter['filter']['os'] = $sysinfo->getOSName();
+
+			if ( $filter['filter']['arch'] == NULL )
+				$filter['filter']['arch'] = $sysinfo->getOSArchitecture();
+		}
+
+		// Return the filter array
 		return $filter;
 	}
 
@@ -247,8 +272,9 @@
 
 			$filterArray = $filterData['filter'];
 			$output = getStringOutput( $data, $filterData['options']['full'] );
-			$output .= "\n\nFiltro utilizado:\n".((count($filterArray)==0)? ("\tNinguno\n"): arrayOutput( $filterArray, "\t(%s => %s)\n" ));
-			$output .="\nOpciones del filtro:\n".arrayOutput( $filterData['options'], "\t(%s => %s)\n");
+			$usedFilters = arrayOutput( $filterArray, "\t(%s => %s)\n" );
+			$output .= "\n\nFilter:".(($usedFilters)? "\n$usedFilters\n": "\tNone\n");
+			$output .="Opciones del filtro:\n".arrayOutput( $filterData['options'], "\t(%s => %s)\n");
 
 			if ( $outputType == "html" ) {
 				$output = "<pre>".$output."</pre>";
@@ -281,11 +307,16 @@
 	*/
 	function arrayOutput( $array, $mask, $key = "" ) {
 		$output = "";
-		foreach( $array as $field => $value ) {
-			if ( is_array( $value ) ) $value = implode(',', $value);
-			if ( is_bool( $value ) ) $value = $value?'si':'no';
-			if ( $key == "" || $key == $field )			
-				$output .= sprintf( $mask, $field, $value);	
+		if ( $key ) {
+			$output = sprintf( $mask, $key, $array[$key] );	
+		} else {
+			foreach( $array as $field => $value ) {
+				if ( $value != NULL ) {
+					if ( is_array( $value ) ) $value = implode(',', $value);
+					if ( is_bool( $value ) ) $value = $value?'Yes':'No';
+					$output .= sprintf( $mask, $field, $value);	
+				}
+			}
 		}
 		return $output;
 	}
