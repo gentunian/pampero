@@ -30,15 +30,6 @@
 			return ( stripos( $str, "cli" ) !== FALSE || stripos( $str, "cgi" ) !== FALSE );
 		}
 
-		/*
-		*
-		*
-		public static function getTargetMachine( $args ) {
-			$hostname = Settings::getInvokingHostname( $args );
-			return new Machine( $hostname );
-		}
-		*/
-
 		/**
 		*
 		*/
@@ -77,10 +68,10 @@
 			$output = $ping->ping( $host );
 
 			$system = "Unknown";
-			if ( $output->_target_ip ) {
-				$system =  ( $output->_ttl > 64 )? "Windows" : "Unix";
-			} elseif ( $output->_transmitted == 1 ) {
+			if ( $output->_ttl == NULL && $output->_target_ip == NULL ) {
 				$system = ucfirst( strtolower( NATIVE_OS ));
+			} elseif ( $output->_ttl != NULL ) {
+				$system =  ( $output->_ttl > 64 )? "Windows" : "Unix";
 			}
 
 			ini_set('display_errors', $display_errors);
