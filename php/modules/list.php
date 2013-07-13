@@ -195,7 +195,7 @@
         			"target" => NULL,
         			"full" => false,
         			"exact" => false,
-        			"output" => "jsonplain"
+        			"output" => Utils::getDefaultOutput()
         			),
         		"filter" => array(
         			"id" => NULL,

@@ -187,6 +187,8 @@
 			$args = $_GET;
 		
 		try {
+			$defaultOutput = Utils::isCommandLineInterface() ? "console" : "jsonplain";
+
 			// Create options for this module based on the object description passed in
 			// to the constructor. 
 			$packagesOpts = new Options(
@@ -194,22 +196,10 @@
 				$args,
 				// List of optional arguments (keys) with default values.
 				// Missing arguments will be assigned to default values.
-				array(
-					"output" => "jsonplain"
-					//"target" => Utils::getInvokingHostname()
-					),
+				array( "output" => $defaultOutput ),
 				// Required options, if any.
 				array( "command" )
 				);
-
-			// In order to continue, try creating a Machine object instance.
-			// If we can create it, then, other modules will.
-			// Create a credentials provider
-			//$credProv = new MyCredentialsProvider();
-
-			// Create a machine placeholder in order to retrieve
-			// host information
-			//$machine = new Machine( $packagesOpts->getOption( "target" ), $credProv );
 		    
 		    // Get the command module to import
 		    $command = $packagesOpts->getOption( "command" );
@@ -234,9 +224,9 @@
 	function do_import( $module ) {
 		$path = __DIR__ . "/modules/$module.php";
 		if (! @include_once( $path ))
-			throw new Exception ( "No se pudo incluir el modulo $module desde $path" );
+			throw new Exception ( "Could not include '$module' module from '$path'" );
 		if (! file_exists( $path )) {
-			throw new Exception ( "No existe el archivo $module desde $path" );
+			throw new Exception ( "'$module' does not exists at '$path'" );
 		} else {
 			require_once( $path ); 
 		}
