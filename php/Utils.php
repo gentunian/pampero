@@ -18,16 +18,36 @@
 		*
 		*/
 		public static function my_session_( $sufix, $args = NULL ) {
-			if (! isCommandLineInterface() )
+			if (! self::isCommandLineInterface() )
 				call_user_func( "session_$sufix", $args );
 		}
 
 		/**
 		*
 		*/
+		public static function getDefaultOutput() {
+			if ( self::isCommandLineInterface() ) {
+				$defaultOutput = CONSOLE_OUTPUT;
+			} elseif ( Utils::isAJAXRequest() ) {
+				$defaultOutput = JSON_OUTPUT;
+			} else {
+				$defaultOutput = HTML_OUTPUT;
+			}
+			return $defaultOutput;
+		}
+		/**
+		*
+		*/
 		public static function isCommandLineInterface() {
 			$str = php_sapi_name();
 			return ( stripos( $str, "cli" ) !== FALSE || stripos( $str, "cgi" ) !== FALSE );
+		}
+
+		/**
+		* TODO: Improved this solution by using session cookies
+		*/
+		public static function isAJAXRequest() {
+			return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 		}
 
 		/**
