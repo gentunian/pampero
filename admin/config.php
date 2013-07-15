@@ -19,5 +19,7 @@
 	define( 'PACKAGES_DIR', $iniContents['General']['PACKAGES_DIR'] );
 	define( 'TMP_DIR', $iniContents['General']['TMP_DIR'] );
 	define( 'WINDOWS_WINDOWS_INSTALLER', $iniContents['Installers']['WINDOWS_WINDOWS'] );
-
+	define( 'CONSOLE_OUTPUT', 'console' );
+	define( 'JSON_OUTPUT', 'jsonplain' );
+	define( 'HTML_OUTPUT', 'html' );
 ?>
