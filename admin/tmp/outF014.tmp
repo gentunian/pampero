@@ -1,0 +1,9 @@
+
+C:\Windows\system32>echo Running example.bat with args arg1 arg2 
+Running example.bat with args arg1 arg2
+
+C:\Windows\system32>echo "This was a pampero example! DELETE ME"  1>C:\ProgramData\deleteme.txt 
+
+C:\Windows\system32>ping 1.1.1.1 -n 1 -w 3000  1>nul 
+
+C:\Windows\system32>exit /B 0 
