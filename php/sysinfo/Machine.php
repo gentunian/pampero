@@ -9,7 +9,6 @@
 
 		public function __construct( $hostname, $credProv ) {
 			$systype = Utils::getSystemType( $hostname );
-			//$systype = "Windows";
 			$class = $systype."SystemInfo";
 			$this->sysinfo = new $class( $hostname );
 
