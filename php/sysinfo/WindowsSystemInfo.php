@@ -4,9 +4,9 @@
 	class WindowsSystemInfo {
 		private $sysinfo = NULL;
 
-		public function __construct( $hostname ) {
-			$user = "Administrador";
-			$password =  "RCribera2013*";
+		public function __construct( $hostname, $credProv ) {
+			$user = $credProv->getAdminUser();
+			$password =  $credProv->getAdminPassword();
 			$wmiLocator = new COM("WbemScripting.SWbemLocator");
 			$wmi = $wmiLocator->ConnectServer( $hostname, "root\\CIMV2", $user, $password );
 			$this->sysinfo = array(
