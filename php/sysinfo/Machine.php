@@ -8,12 +8,12 @@
 		private $credentials = NULL;
 
 		public function __construct( $hostname, $credProv ) {
-			$systype = Utils::getSystemType( $hostname );
-			$class = $systype."SystemInfo";
-			$this->sysinfo = new $class( $hostname );
-
 			// Get credentials from a credentials provider
 			$this->credentials = $credProv->getCredentials( $hostname );
+
+			$systype = Utils::getSystemType( $hostname );
+			$class = $systype."SystemInfo";
+			$this->sysinfo = new $class( $hostname, $credProv );
 		}
 	
 		public function getSystemInfo() {
