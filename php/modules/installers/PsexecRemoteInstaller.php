@@ -75,8 +75,8 @@
 		
 
 		public function install( $command, $args, $machine, $credentials) {
-			$psexecOptions = "/user:".$credentials->getUser();
-			$psexecOptions .= " /password:".$credentials->getPassword();
+			$psexecOptions = "/user:".$credentials->getAdminUser();
+			$psexecOptions .= " /password:".$credentials->getAdminPassword();
 			$psexecOptions .= " /machine:".$machine;
 
 			$string = "cscript //E:JScript ".$this->scriptFileName." $psexecOptions \"$command\" $args";
