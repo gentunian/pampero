@@ -1,5 +1,6 @@
 <?php
 
+	// TODO: Provide fallback option if WMI isn't available try guessing with other tools
 	class WindowsSystemInfo {
 		private $sysinfo = NULL;
 
