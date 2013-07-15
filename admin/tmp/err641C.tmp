@@ -1,0 +1,7 @@
+
+PsExec v1.98 - Execute processes remotely
+Copyright (C) 2001-2010 Mark Russinovich
+Sysinternals - www.sysinternals.com
+
+Connecting to rcope4...Starting PsExec service on rcope4...Connecting with PsExec service on rcope4...Starting cmd.exe on rcope4...
+cmd.exe exited on rcope4 with error code 0.

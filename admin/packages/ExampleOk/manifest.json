@@ -10,7 +10,7 @@
             ],
             "version": "0.0.1",
             "name": "ExampleOk",
-            "description": "This is an example returning OK as if the package was installed."
+            "description": "This is an example returning OK as if the package was installed and creates %ALLUSERSPROFILE%\\deleteme.txt file in order to verify it worked."
         }
     ]
 }
