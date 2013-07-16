@@ -3,50 +3,56 @@
 	// TODO: Provide fallback option if WMI isn't available try guessing with other tools
 	class WindowsSystemInfo {
 		private $sysinfo = NULL;
+		private $wmi = NULL;
 
-		public function __construct( $hostname, $credProv ) {
-			$user = $credProv->getAdminUser();
-			$password =  $credProv->getAdminPassword();
-			$wmiLocator = new COM("WbemScripting.SWbemLocator");
-			$wmi = $wmiLocator->ConnectServer( $hostname, "root\\CIMV2", $user, $password );
-			$this->sysinfo = array(
-				/*'Win32Product' =>  $wmi->ExecQuery("Select * from Win32_Product"),*/
-				'OperatingSystem' => $wmi->ExecQuery("Select * from Win32_OperatingSystem"),
-				'ComputerSystem' => $wmi->ExecQuery("Select * from Win32_ComputerSystem")
-				/*'Bios' => $wmi->ExecQuery("Select * from Win32_BIOS"),*/
-				/*'Processor' => $wmi->ExecQuery("Select * from Win32_ComputerSystemProcessor"),*/
-				/*'PhysicalMemory' => $wmi->ExecQuery("Select * from Win32_PhysicalMemory"),*/
-				/*'BaseBoard' => $wmi->ExecQuery("Select * from Win32_BaseBoard"),*/
-				/*'LogicalDisk' => $wmi->ExecQuery("Select * from Win32_LogicalDisk")*/
-			);
-		}
-
-		function getHostname() {
-			foreach ( $this->sysinfo['ComputerSystem'] as $wmi_call) 
-				return $wmi_call->Name;
-		}
-
-		function getDomain() {
-			foreach ( $this->sysinfo['ComputerSystem'] as $wmi_call) 
-				return $wmi_call->Domain;
-		}
-
-		function getOSName() {
-			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call) {
-				$fullname =  explode('|', $wmi_call->Name, 2)[0];
-				return $fullname;
+		public function __construct( $hostname, $cred ) {
+			try {
+				$this->wmi = new WMISystemInfo( $hostname, $cred );
+			} catch( Exception $e ) {
+				$user = $cred->getAdminUser();
+				$password =  $cred->getAdminPassword();
+				$this->sysinfo['hostname'] = $hostname;
+				$this->sysinfo['domain'] = "Unknown";
+				$this->sysinfo['OSName'] = "Unknown";
+				$this->sysinfo['OSVersion'] = "Unknown";
+				$this->sysinfo['OSArchitecture'] = "Unknown";
+				echo $e->getMessage();
 			}
 		}
 
+		function getHostname() {
+			if ( $this->wmi == NULL)
+				return $this->sysinfo['hostname'];
+
+			return $this->wmi->getHostname();
+		}
+
+		function getDomain() {
+			if ( $this->wmi == NULL)
+				return $this->sysinfo['domain'];
+
+			return $this->wmi->getDomain();
+		}
+
+		function getOSName() {
+			if ( $this->wmi == NULL)
+				return $this->sysinfo['OSName'];
+
+			return $this->wmi->getOSName();
+		}
+
 		function getOSVersion() {
-			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
-				return $wmi_call->Version;
+			if ( $this->wmi == NULL)
+				return $this->sysinfo['OSVersion'];
+
+			return $this->wmi->getOSVersion();
 		}
 
 		function getOSArchitecture() {
-			foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
-				$arch = $wmi_call->OSArchitecture;
-			return preg_replace( "/64.*/", "x86_64", $arch);
+			if ( $this->wmi == NULL)
+				return $this->sysinfo['OSArchitecture'];
+
+			return $this->wmi->getOSArchitecture();
 		}
 	}
 ?>
