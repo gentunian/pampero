@@ -4,12 +4,16 @@ class WMISystemInfo
 {
 	private $sysinfo = NULL;
 
-	public function __construct( $hostname )
+	public function __construct( $hostname, $cred )
 	{
-		$user = $credProv->getAdminUser();
-		$password =  $credProv->getAdminPassword();
+		$user = $cred->getAdminUser();
+		$password =  $cred->getAdminPassword();
 		$wmiLocator = new COM("WbemScripting.SWbemLocator");
-		$wmi = $wmiLocator->ConnectServer( $hostname, "root\\CIMV2", $user, $password );
+		if ( strtolower( $hostname ) == strtolower( gethostname() )) {
+			$wmi = $wmiLocator->ConnectServer( $hostname, "root\\CIMV2" );
+		} else {
+			$wmi = $wmiLocator->ConnectServer( $hostname, "root\\CIMV2", $user, $password );
+		}
 		$this->sysinfo = array(
 			/*'Win32Product' =>  $wmi->ExecQuery("Select * from Win32_Product"),*/
 			'OperatingSystem' => $wmi->ExecQuery("Select * from Win32_OperatingSystem"),
@@ -20,6 +24,7 @@ class WMISystemInfo
 			/*'BaseBoard' => $wmi->ExecQuery("Select * from Win32_BaseBoard"),*/
 			/*'LogicalDisk' => $wmi->ExecQuery("Select * from Win32_LogicalDisk")*/
 			);
+
 	}
 
 	function getHostname()
@@ -52,7 +57,11 @@ class WMISystemInfo
 	{
 		foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
 			$arch = $wmi_call->OSArchitecture;
-		return preg_replace( "/64.*/", "x86_64", $arch);
+		if ( stripos( $arch, "64") !== FALSE ) {
+			return "x86_64";
+		} else  {
+			return "i686";
+		}
 	}
 }
 ?>
