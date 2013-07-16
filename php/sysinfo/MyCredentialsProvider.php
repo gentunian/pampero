@@ -1,32 +1,49 @@
 <?php
 
+/**
+* MyCredentialsProvider class:
+* ----------------------------
+*
+*/
+class MyCredentialsProvider implements CredentialsProvider
+{
+	private $contents = "";
+
+	/**
+	* Constructor.
+	*/
+	public function __construct() {
+		// If the file doesn't exists, do nothing
+		if ( file_exists( PASSWORD_FILE ))
+		{
+
+			// Get the file content for later processing
+			$this->contents = file_get_contents( PASSWORD_FILE );
+
+		} else throw new Exception("Password file ".PASSWORD_FILE." not found.");
+	}
+
 	/**
 	*
+	* @param hostname
+	* @return Credentials object
 	*/
-	class MyCredentialsProvider implements CredentialsProvider {
-		private $contents = "";
+	public function getCredentials( $hostname )
+	{
+		$pwd = "P4ssw0rD";
+		$adm = "4dm1n";
 
-		public function __construct() {
-			// If the file doesn't exists, do nothing
-			if ( file_exists( PASSWORD_FILE )) {
-
-				// Get the file content for later processing
-				$this->contents = file_get_contents( PASSWORD_FILE );
-
-			} else throw new Exception("Password file ".PASSWORD_FILE." not found.");
+		if ( preg_match( "/^$hostname=(.*)$/ixm", $this->contents, $match ) == 1 ) {
+			$pwd = $match[1];
 		}
 
-		public function getCredentials( $hostname ) {
-			$pwd = "P4ssw0rD";
-			$adm = "";
-
-			if ( preg_match( "/^$hostname=(.*)$/ixm", $this->contents, $match ) == 1 ) {
-				$pwd = $match[1];
-			}
-
-			// TODO: fix localization and portability
-			return new Credential( "Administrador", $pwd );
-
+		$sysType = Utils::getSystemType();
+		// TODO: Add cases
+		if ( $sysType == OS_WINDOWS ) {
+			$adm = NT_ADMIN;
 		}
+
+		return new Credential( $adm, $pwd );
 	}
+}
 ?>
