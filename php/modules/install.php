@@ -124,11 +124,8 @@
 
 	function getTargetMachine( $target )
 	{
-		// Create credentials provider
-		$credProv = new MyCredentialsProvider();
-
 		// Create machine based on $target and $credProv
-		$machine = new Machine( $target, $credProv );
+		$machine = new Machine( $target );
 
 		return $machine;
 	}

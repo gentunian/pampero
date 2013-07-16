@@ -221,12 +221,10 @@
 		// If target was provided, we then filter the results based on target info.
 		// If don't, we filter based on filter options.
 		if ( $target != NULL ) {
-	        // Create a credentials provider
-			$credProv = new MyCredentialsProvider();
 
 		    // Create a machine placeholder in order to retrieve
 		    // host information
-			$machine = new Machine( $target, $credProv );
+			$machine = new Machine( $target );
 
 			// Get system information
 			$sysinfo = $machine->getSystemInfo();
@@ -250,6 +248,7 @@
 	*
 	*/
 	function do_list_output( $data, $args ) {
+		// TODO: REVIEW
 		$filterData = createFilter( $args );
 
 		$output = "";
