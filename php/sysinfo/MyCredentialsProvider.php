@@ -37,7 +37,7 @@ class MyCredentialsProvider implements CredentialsProvider
 			$pwd = $match[1];
 		}
 
-		$sysType = Utils::getSystemType();
+		$sysType = Utils::getSystemType( $hostname );
 		// TODO: Add cases
 		if ( $sysType == OS_WINDOWS ) {
 			$adm = NT_ADMIN;
