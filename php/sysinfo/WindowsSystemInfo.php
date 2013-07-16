@@ -16,7 +16,7 @@
 				$this->sysinfo['OSName'] = "Unknown";
 				$this->sysinfo['OSVersion'] = "Unknown";
 				$this->sysinfo['OSArchitecture'] = "Unknown";
-				echo $e->getMessage();
+				//echo $e->getMessage();
 			}
 		}
 
