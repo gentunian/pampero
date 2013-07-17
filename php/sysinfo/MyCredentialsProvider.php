@@ -20,7 +20,7 @@ class MyCredentialsProvider implements CredentialsProvider
 			// Get the file content for later processing
 			$this->contents = file_get_contents( PASSWORD_FILE );
 
-		} else throw new Exception("Password file ".PASSWORD_FILE." not found.");
+		} else throw new Exception("Password file " . PASSWORD_FILE . " not found.");
 	}
 
 	/**
