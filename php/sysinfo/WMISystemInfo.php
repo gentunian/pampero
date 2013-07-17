@@ -4,7 +4,7 @@
 * WMISystemInfo class:
 * --------------------
 *
-* Provides system information for windows machines using WMI (Windows Management Interface)
+* Provides system information for windows machines using WMI (Windows Management Instrumentation)
 * if available.
 *
 * WMISystemInfo implements SystemInfo interface. The implementation is made using COM objects
