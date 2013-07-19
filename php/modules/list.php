@@ -7,7 +7,11 @@
 	}
 
 	/**
+	* PackageFinder class:
+	* --------------------
 	*
+	* A simple class that searchs for $manifestfile's inside $path and filters the result
+	* based on $filter.
 	*/
 	class PackageFinder {
 		private $filter;
@@ -15,7 +19,11 @@
 		private $manifestfilename;
 
 		/**
+		* Constructor.
 		*
+		* @param filter The filter array based
+		* @param path Where to start searching for files
+		* @param manifestfilename The manifest file name, for example, "manifest.json"
 		*/
 		public function __construct( $filter, $path, $manifestfilename ) {
 			$this->filter = $filter;
@@ -24,7 +32,7 @@
 		}
 
 		/**
-		*
+		* @return Returns an associative array with package data
 		*/
 		public function getPackages() {
 			$di = new RecursiveDirectoryIterator( $this->path, FilesystemIterator::SKIP_DOTS );
@@ -43,7 +51,7 @@
 		}
 
 		/**
-	    * Returns true is $file contains a JSON string called manifest.json.
+	    * @return Returns true is $file contains a JSON string called manifest.json.
 	    * False otherwise.
 	    **/
 		private function isPackageFile( $file ) {
@@ -95,6 +103,7 @@
 	    	foreach( $filterArray as $key => $value ) {
 	    		$array1 = $this->wrapArray( $array[$key] );
 	    		$array2 = $this->wrapArray( $value );
+
 	    		if ( $array2[0] == NULL || $array2[0] == "*" || $this->shouldFilterArray( $array1, $array2, $exact ))
 	    			$matches++;
 	    	}
