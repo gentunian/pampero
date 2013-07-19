@@ -7,89 +7,126 @@
 		die( "Should be invoked by packages.php" );
 	}
 
+	
+	/**
+	*
+	*/
+	class InstallProcess
+	{
+		const STATUS_INSTALLING = "INSTALLING";
+		const STATUS_DONE = "DONE";
+		const STATUS_INIT = "INIT";
+		private $status;
+		private $packages;
+		private $target;
+		private $df;
+
+		/**
+		*
+		*/
+		public function __construct( $target, $packages )
+		{
+			$this->status = self::STATUS_INIT;
+			$this->packages = $packages;
+			$this->target = $target;
+			$this->df = new DataFile("install", $this->target);
+		}
+
+		/**
+		*
+		*/
+		public function __destruct()
+		{
+			//$this->df->delete();
+		}
+
+		/**
+		*
+		*/
+		public function installPackages()
+		{
+
+		    // Create an instance of InstallerCreator in order to retrieve
+		    // an installer based on package data.
+			$installerCreator = new InstallerCreator();
+
+	        // The resulting array with data about the installation process
+    	    // and installtion process data variables.
+			$cmdResult = array();
+			$installData = array(
+				"datetime" => date('l jS \of F Y h:i:s A'),
+				"current" => "",
+				"status" => self::STATUS_INSTALLING,
+				"toInstall" => count($this->packages),
+				"installed" => 0,
+				"installData" => array()
+				);
+			$this->df->write($installData);
+
+	    	// Creates a CredentialsProvider object to provide credentials to installers
+			$credProv = new MyCredentialsProvider();
+			foreach($this->packages as $key => $package) {
+	    		// Get an installer instance for this package data.
+				$installer = $installerCreator->getInstaller($package['os']);
+    
+	    		// target credentials
+				$credentials = $credProv->getCredentials($this->target);
+
+		    	// get the package id, installer file and arguments
+				$packageId = $package['id'];
+				$packageInstallerFile = $package['installer'];
+				$packageInstallerArgs = $package['installerArgs'];
+				$installData['current'] = $packageId;
+				$this->df->write($installData);
+
+		    	// Run the installation of $installer for $target
+				$cmdResult[$packageId] = $installer->install($packageInstallerFile, $packageInstallerArgs, $this->target, $credentials);
+
+		    	// Increment $installed variable althought package may not be installed due to
+		    	// install errors. Install errors for a specific package can be located in
+		    	// the "installData" key. The value will be a CommandResult object.
+				$installData['installed']++;
+
+	            // Get the array from CommandResult object merged with the package id.
+				$data =  array_merge(array("id" => $packageId), $cmdResult[ $packageId ]->toArray());
+
+				// Remove 'stdout' key, it could contains sensitive data.
+		    	// Q: Does this imply to much knowledge about CommandResult object ??n
+				unset($data['stdout']);
+				$installData['installData'][] = $data;
+				$this->df->write($installData);
+			}
+
+			$installData['current'] = "";
+			$installData['status'] = self::STATUS_DONE;
+			$this->df->write($installData);
+
+			return $installData;
+		}
+	}
 
 	/**
 	*
 	*/
 	function do_install( $args )
 	{
-		try {
+		// Get options
+		$opts = getOptionsFromArgs($args);
+		$target = $opts->getOption("target");
 
-			// Use session to implement a simple progress meter.
-		    // NOTE: This will only works for HTTP/AJAX requests
-			Utils::my_session_( "start" );
+		// Get the target machine
+		$machine = getTargetMachine($target);
 
-			// Get options
-			$opts = getOptionsFromArgs( $args );
-			$target = $opts->getOption( "target" );
+		// Get the list of packages to be installed
+		$packages = getPackageData($args);
 
-			// Get the target machine
-			$machine = getTargetMachine( $target);
+		// Create a new installation process for $target with desirde $packages
+		$installProcess = new InstallProcess($target, $packages);
 
- 		    // We have a target, go on...
-			$_SESSION['target'] = $machine->getSystemInfo()->getHostname();
+		// Do the installation and get installation data
+		$installData = $installProcess->installPackages();
 
-			// $opts->getArgs() ???
-	        $installData = getPackageData( $args );
-
-	        // Create an instance of InstallerCreator in order to retrieve
-		    // an installer based on package data.
-	        $installerCreator = new InstallerCreator();
-
-	    	// The resulting array with data about the installation process
-	        $result = array();
-
-		    // Store the array that defines our progress per session
-	        $_SESSION['data'] = array();
-	        Utils::my_session_( "write_close" );
-	        $credProv = new MyCredentialsProvider();
-
-	        foreach( $installData as $key => $value ) {
-			    // Get an installer instance for this package data.
-	        	$installer = $installerCreator->getInstaller( $value['os'] );
-
-			    // target credentials
-	        	$credentials = $credProv->getCredentials( $target );
-
-			    // get the package id, installer file and arguments
-	        	$id = $value['id'];
-	        	$installerFile = $value['installer'];
-	        	$installerArgs = $value['installerArgs'];
-
-			    // Run the installation of $installer for $target
-	        	$result[ $id ] = $installer->install( $installerFile, $installerArgs, $target, $credentials );
-
-			    // Start session to get a lock on $_SESSION
-	        	Utils::my_session_ ( "start" );
-
-			    // Get the array from CommandResult object
-	        	$data = $result[ $id ]->toArray();
-
-			     // Merge the array with $id data
-	        	$data = array_merge( array( "id" => $id ), $data );
-
-			    // Remove 'stdout' key, it could contains sensitive data.
-			    // Q: Does this imply to much knowledge of CommandResult object ??
-	        	unset( $data['stdout'] );
-
-			    // Save data in $_SESSION
-	        	$_SESSION['data'][] = $data;
-
-	            // Remove the lock on $_SESSION
-	        	Utils::my_session_( "write_close" );
-	        }
-
-	        // Improve this?
-	        return $_SESSION['data'];
-
-	    } catch( Exception $e ) {
-
-	    	// Exception was thrown. Do not continue.
-	    	echo $e->getMessage();
-
-	    	// Die hard 2
-	    	die( $e->getMessage() );
-	    }
+		return $installData;
 	}
 
 	function getOptionsFromArgs( $args )
@@ -126,7 +163,6 @@
 	{
 		// Create machine based on $target and $credProv
 		$machine = new Machine( $target );
-
 		return $machine;
 	}
 
@@ -138,9 +174,8 @@
 
 		// Retrive the array list of packages based on arguments from list.php module
 		// do_list() returns an array based data.
-		$installData = do_list( $args );
-
-		return $installData;
+		$packages = do_list( $args );
+		return $packages;
 	}
 
 	/**
@@ -148,6 +183,8 @@
 	*/
 	function do_install_output( $result, $args )
 	{
+		$installData = $result['installData'];
+
 		$opts = new Options(
 			$args,
 			array( "output" => Utils::getDefaultOutput() )
@@ -171,12 +208,12 @@
 		else {
 			$output = sprintf("\nSumario:\n%s\n", str_repeat("-", strlen("sumario")));
 			$okCount = 0;
-			foreach( $result as $key => $value) {
+			foreach( $installData as $key => $value) {
 				$output .= sprintf("\t%s:\n\t%s\n\t* %s\n\n", $value['id'], str_repeat("-", strlen( $value['id'] )), $value['exitString']);
 				if ( $value['exitCode'] == 0 )
 					$okCount++;
 			}
-			$output .= sprintf("\nSe instalaron %d programas correctamente de un total de %d.\n", $okCount, count( $result ));
+			$output .= sprintf("\nSe instalaron %d programas correctamente de un total de %d.\n", $okCount, count( $installData ));
 
 			if ( $outputType == "html" ) {
 				$output = "<pre>".$output."</pre>";
