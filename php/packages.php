@@ -36,6 +36,77 @@
 		return false;
 	});
 
+	/**
+	*
+	*/
+	class DataFile
+	{
+		private $filename;
+
+		public function __construct($prefix, $suffix)
+		{
+			$this->filename = TMP_DIR . "/${prefix}_${suffix}";
+			$fd = fopen($this->filename, "a+");
+			fclose($fd);
+		}
+
+		public function write($data)
+		{
+			$fd = fopen($this->filename, "w+");
+			if (flock($fd, LOCK_EX))
+			{
+				ftruncate($fd, 0);
+				fwrite($fd, json_encode($data));
+				fflush($fd);
+				flock($fd, LOCK_UN);
+			}
+			fclose($fd);
+		}
+
+		public function read()
+		{
+			$content = NULL;
+			$fd = fopen($this->filename, "r");
+			if (flock($fd, LOCK_SH))
+			{
+				$content = json_decode(file_get_contents($this->filename));
+				fflush($fd);
+				flock($fd, LOCK_UN);
+			}
+			fclose($fd);
+			return $content;
+		}
+
+		public function delete()
+		{
+			@unlink($this->filename);
+		}
+	}
+
+	/**
+	*
+	*/
+	class InstallationDataFile extends DataFile
+	{
+		public function toString()
+		{
+			$output = "";
+			$data = $this->read();
+			if ($data != NULL) {
+				$output .= sprintf("Date: %s\n", $data->datetime);
+				$output .= sprintf("Status: %s\n", $data->status);
+				$output .= sprintf("Current: %s\n", $data->current);
+				$output .= sprintf("Installed: %d\n", $data->installed);
+				$output .= sprintf("To install: %d\n", $data->toInstall);
+				$output .= sprintf("Progress: %d%%\n", ($data->installed/$data->toInstall*100));
+				$output .= sprintf("Install data:\n");
+				foreach($data->installData as $key => $value) {
+					$output .= sprintf("\t%s:%s\n", $key, $value);
+				}
+			}
+			return $output;
+		}
+	}
 
 	/**
 	*
@@ -150,14 +221,17 @@
 			return $changed;
 		}
 
-		// TODO: CHECK FOR KEY EXISTENCE
-		//
 		// Returns the option or option category based on dsc
 		public function getOption( $dsc ) {
 			$split = explode( "-", $dsc );
-			$value = $this->store[$split[0]];
+			$value = NULL;
+
+			if ( isset( $this->store[$split[0]] ))
+				$value = $this->store[$split[0]];
+
 			for( $i = 1; $i < count( $split ); $i++ )
 				$value = $value[$split[$i]];
+
 			return $value;
 		}
 
@@ -187,7 +261,6 @@
 			$args = $_GET;
 		
 		try {
-			$defaultOutput = Utils::isCommandLineInterface() ? "console" : "jsonplain";
 
 			// Create options for this module based on the object description passed in
 			// to the constructor. 
@@ -196,7 +269,7 @@
 				$args,
 				// List of optional arguments (keys) with default values.
 				// Missing arguments will be assigned to default values.
-				array( "output" => $defaultOutput ),
+				array( "output" => Utils::getDefaultOutput() ),
 				// Required options, if any.
 				array( "command" )
 				);
@@ -223,7 +296,7 @@
 	*/
 	function do_import( $module ) {
 		$path = __DIR__ . "/modules/$module.php";
-		if (! @include_once( $path ))
+		if (! include_once( $path ))
 			throw new Exception ( "Could not include '$module' module from '$path'" );
 		if (! file_exists( $path )) {
 			throw new Exception ( "'$module' does not exists at '$path'" );
