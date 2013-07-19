@@ -9,10 +9,19 @@ class Utils
 	final private function __construct() {}
 	final private function __clone() {}
 
+	/**
+	*
+	*/
 	public static function my_session_( $sufix, $args = NULL )
 	{
 		if (! self::isCommandLineInterface() )
-			call_user_func( "session_$sufix", $args );
+			if ( is_array($args)) {
+				return call_user_func_array( "session_$sufix", $args );
+			} else {
+				return call_user_func( "session_$sufix" );
+			}
+		else
+			return true;
 	}
 
 	public static function getDefaultOutput()
@@ -78,7 +87,7 @@ class Utils
 		if ( $output->_ttl == NULL && $output->_target_ip == NULL ) {
 			$system = ucfirst( strtolower( NATIVE_OS ));
 		} elseif ( $output->_ttl != NULL ) {
-			$system =  ( $output->_ttl > 64 )? "Windows" : "Unix";
+			$system =  ( $output->_ttl > 64 )? OS_WINDOWS : OS_UNIX;
 		}
 
 		ini_set('display_errors', $display_errors);
