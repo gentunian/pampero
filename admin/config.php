@@ -1,5 +1,7 @@
 <?php
 
+	require_once( __DIR__ . '/../php/KLogger.php' );
+
 	define( 'CONFIG_INI', __DIR__ . '/config.ini' );
 
 	if (! file_exists( CONFIG_INI )) {
@@ -17,6 +19,7 @@
 	define( 'MANIFEST_FILENAME', $iniContents['General']['MANIFEST_FILENAME'] );
 	define( 'PASSWORD_FILE', $iniContents['General']['PASSWORD_FILE'] );
 	define( 'PACKAGES_DIR', $iniContents['General']['PACKAGES_DIR'] );
+	define( 'LOG_DIR', $iniContents['General']['LOG_DIR'] );
 	define( 'TMP_DIR', $iniContents['General']['TMP_DIR'] );
 	define( 'WINDOWS_WINDOWS_INSTALLER', $iniContents['Installers']['WINDOWS_WINDOWS'] );
 	define( 'CONSOLE_OUTPUT', 'console' );

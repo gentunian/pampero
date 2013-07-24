@@ -8,6 +8,15 @@ class Utils
 
 	final private function __construct() {}
 	final private function __clone() {}
+	static private $logger;
+
+	public static function log($msg, $sev)
+	{
+		if (self::$logger == NULL)
+			self::$logger = new KLogger(LOG_DIR, KLogger::INFO);
+
+		self::$logger->log($msg, $sev);
+	}
 
 	/**
 	*
@@ -50,17 +59,33 @@ class Utils
 		return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 	}
 
+	public static function getInvokingIP()
+	{
+		$ip = "";
+	    // From command line should be localhost if 'target' option
+		// was not provided
+		if ( self::isCommandLineInterface() ) {
+			$ip = gethostbyname(gethostname());
+
+		} else {
+			// From http request use remote IP
+			if ( isset( $_SERVER['REMOTE_ADDR'] ))
+				$ip = $_SERVER['REMOTE_ADDR'];
+		}
+		return $ip;
+	}
+
 	public static function getInvokingHostname( $removeDomain = true )
 	{
 		$hostname = "";
 
-			// From command line should be localhost if 'target' option
-			// was not provided
+		// From command line should be localhost if 'target' option
+		// was not provided
 		if ( self::isCommandLineInterface() ) {
 			$hostname = gethostname();
 
 		} else {
-				// From http request use remote IP
+			// From http request use remote IP
 			if ( isset( $_SERVER['REMOTE_ADDR'] ))
 				$hostname = gethostbyaddr( $_SERVER['REMOTE_ADDR'] );
 		}
