@@ -37,46 +37,81 @@
 	});
 
 	/**
+	* DataFile class:
+	* ---------------
 	*
+	* Encapsulates the reading and writing of JSON data into files located in LOG_DIR/$prefix directory with
+	* name $suffix. The idea of this class is to atomically read and write from files and store JSON encoded
+	* data keeping the details to a minimun.
 	*/
 	class DataFile
 	{
 		private $filename;
 
-		public function __construct($prefix, $suffix)
+		/**
+		* Constructor.
+	    *
+	    * @param prefix LOG_DIR/prefix will be the directory to be created
+	    * @param suffix LOG_DIR/prefix/sufix will be the filename to be created
+	    * @param create Specifies wether or not the file should be created.
+		*/
+		public function __construct($prefix, $suffix, $create = true)
 		{
-			$this->filename = TMP_DIR . "/${prefix}_${suffix}";
-			$fd = fopen($this->filename, "a+");
-			fclose($fd);
+			$dir = LOG_DIR . "/${prefix}";
+			if (!file_exists($dir)){
+				mkdir($dir);
+			}
+			$this->filename = $dir . "/" . strtoupper($suffix);
+			if ($create) {
+				$fd = fopen($this->filename, "a+");
+				fclose($fd);
+			}
 		}
 
+		/**
+		* Writes data to $this->filename previously JSON encoded.
+		*
+		* @param data Array to be encoded in JSON before write
+		*/
 		public function write($data)
 		{
-			$fd = fopen($this->filename, "w+");
-			if (flock($fd, LOCK_EX))
-			{
-				ftruncate($fd, 0);
-				fwrite($fd, json_encode($data));
-				fflush($fd);
-				flock($fd, LOCK_UN);
+			$fd = @fopen($this->filename, "w+");
+			if ($fd != FALSE) {
+				if (flock($fd, LOCK_EX))
+				{
+					ftruncate($fd, 0);
+					fwrite($fd, json_encode($data));
+					fflush($fd);
+					flock($fd, LOCK_UN);
+				}
+				fclose($fd);
 			}
-			fclose($fd);
 		}
 
+		/**
+		* Reads data back
+		*
+		* @return the JSON encoded data
+		*/
 		public function read()
 		{
-			$content = NULL;
-			$fd = fopen($this->filename, "r");
-			if (flock($fd, LOCK_SH))
-			{
-				$content = json_decode(file_get_contents($this->filename));
-				fflush($fd);
-				flock($fd, LOCK_UN);
+			$content = "{}";
+			$fd = @fopen($this->filename, "r");
+			if ($fd != FALSE) {
+				if (flock($fd, LOCK_SH))
+				{
+					$content = file_get_contents($this->filename);
+					fflush($fd);
+					flock($fd, LOCK_UN);
+				}
+				fclose($fd);
 			}
-			fclose($fd);
 			return $content;
 		}
 
+		/**
+		* Detelets $this->filename
+		*/
 		public function delete()
 		{
 			@unlink($this->filename);
@@ -84,32 +119,54 @@
 	}
 
 	/**
+	* InstallationDataFile class:
+	* ---------------------------
 	*
+	* This class provides specific output formatting for an installation file. InstallationDataFile
+	* should contain installation based data in order to poll progress changed or leave last
+	* installation history.
 	*/
 	class InstallationDataFile extends DataFile
 	{
+		/**
+		* Returns a formatted string.
+		* @return the string representing the installation data
+		*/
 		public function toString()
 		{
 			$output = "";
-			$data = $this->read();
-			if ($data != NULL) {
-				$output .= sprintf("Date: %s\n", $data->datetime);
-				$output .= sprintf("Status: %s\n", $data->status);
-				$output .= sprintf("Current: %s\n", $data->current);
-				$output .= sprintf("Installed: %d\n", $data->installed);
-				$output .= sprintf("To install: %d\n", $data->toInstall);
-				$output .= sprintf("Progress: %d%%\n", ($data->installed/$data->toInstall*100));
+			$data = json_decode($this->read());
+			$installData = @$data->installData;
+			if ($installData != NULL) {
+				$output .= sprintf("Date: %s\n", @$data->datetime);
+				$output .= sprintf("Status: %s\n", @$data->status);
+				$output .= sprintf("Current: %s\n", @$data->current);
+				$output .= sprintf("Installed: %d\n", @$data->installed);
+				$output .= sprintf("To install: %d\n", @$data->toInstall);
+				$output .= sprintf("Progress: %d%%\n", @($data->installed/$data->toInstall*100));
 				$output .= sprintf("Install data:\n");
-				foreach($data->installData as $key => $value) {
-					$output .= sprintf("\t%s:%s\n", $key, $value);
+				if ($installData != NULL) {
+					foreach($data->installData as $key => $value) {
+						$output .= sprintf("\t%s:%s (%s)[%d]\n", $key, $value->id, $value->exitString, $value->exitCode);
+					}
 				}
 			}
 			return $output;
 		}
+
+		/**
+		* Same as $this->read() with a more intuitive name
+		* @return the JSON data stored in file.
+		*/
+		public function toJSON()
+		{
+			return $this->read();
+		}
 	}
 
 	/**
-	*
+	* Options class:
+	* --------------
 	*/
 	class Options {
 
@@ -146,7 +203,7 @@
 
 			    // Throw an exception if required arguments are missing
 				if (( $o = $this->hasRequiredArguments() ) !== true )
-					throw new Exception("Required argument '$o' is missing", 1);
+					throw new Exception("Required argument '${o}' is missing", 1);
 				// Merge both optional and required arguments
 				$argsTemplate = array_merge( $this->optional, $this->required );
 
@@ -255,7 +312,7 @@
 	**/
 	function parseArgs() {
 		global $argv;
-		if (! is_null( $argv ))
+		if (!is_null($argv))
 			$args = $argv;
 		else
 			$args = $_GET;
@@ -269,22 +326,26 @@
 				$args,
 				// List of optional arguments (keys) with default values.
 				// Missing arguments will be assigned to default values.
-				array( "output" => Utils::getDefaultOutput() ),
+				array("output" => Utils::getDefaultOutput() ),
 				// Required options, if any.
-				array( "command" )
+				array("command")
 				);
 		    
 		    // Get the command module to import
-		    $command = $packagesOpts->getOption( "command" );
+		    $command = $packagesOpts->getOption("command");
+		    $ip = Utils::getInvokingIP();
+		    $host = Utils::getInvokingHostname();
+		    Utils::log("Request from ${host} (${ip}): command=${command} output=" . $packagesOpts->getOption("output"), KLogger::INFO);
 
 		    // Import the module that has the same name as the command
-			do_import( $command );
+			do_import($command);
 		    
 		    // Call the command with the desired args.
 	        // Prepend 'do_' as that is the format that modules should follow.
-			do_it( "do_" . $command, $args );
+			do_it("do_${command}", $args);
 		
-		} catch( Exception $e ) {
+		} catch(Exception $e) {
+			Utils::log($e->getMessage(), KLogger::ERROR);
 			echo "Error: ".$e->getMessage()."\n";
 		}
 	}
@@ -295,11 +356,11 @@
 	*
 	*/
 	function do_import( $module ) {
-		$path = __DIR__ . "/modules/$module.php";
+		$path = __DIR__ . "/modules/${module}.php";
 		if (! include_once( $path ))
-			throw new Exception ( "Could not include '$module' module from '$path'" );
+			throw new Exception ( "Could not include '${module}' module from '${path}'" );
 		if (! file_exists( $path )) {
-			throw new Exception ( "'$module' does not exists at '$path'" );
+			throw new Exception ( "'${module}' does not exists at '${path}'" );
 		} else {
 			require_once( $path ); 
 		}
@@ -320,7 +381,7 @@
 		// All this output behaviour is managed by 'output' option.
 		// This should be the place to autodetect from where the request is made
 		// and in turn, if no 'output' option was provided, set it to something.
-		$output = call_user_func( $command."_output", $result, $args );
+		$output = call_user_func( "${command}_output", $result, $args );
 
 		echo $output;
 	}
