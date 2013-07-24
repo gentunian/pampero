@@ -1,36 +1,42 @@
 <?php
 
-	//
-	//
-	if ( !defined( 'FROM_PACKAGES' ))
+	// 
+	if (!defined('FROM_PACKAGES'))
 	{
 		die( "Should be invoked by packages.php" );
 	}
 
+	/**
+	* Simulates polling by reading installation file data. If a specific target is provided
+	* creates the correspondent InstallationDataFile in order to read installation data.
+	* If its not provided, read all installation files.
+	*/
 	function do_poll($args)
 	{
-		$result = "";
+		$result = [];
 		$opts = getOptions($args);
 		$target = $opts->getOption("target");
-		if ($target != NULL) {
-	        // Create a machine placeholder in order to retrieve
-	        // host information
-			$machine = new Machine($target);
-			$machineName = $machine->getSystemInfo()->getHostname();
-			$df = new DataFile("install", $machineName);
-			$result = $df->read();
 
+		// Do not iterate through all files if a target was provided
+		if ($target != NULL) {
+			$df = new InstallationDataFile("install", $target, false);
+			$result[$target] = $df;
 		} else {
-			foreach(glob(TMP_DIR . "/install_*") as $filepath){
-				$filename = explode('_', basename($filepath));
-				$df = new InstallationDataFile($filename[0], $filename[1]);
-				$result[$filename[1]] = $df->read();
+			// Gather all information from installations made
+			foreach(glob(LOG_DIR . "/install/*") as $filepath){
+				$filename = basename($filepath);
+				$df = new InstallationDataFile("install", $filename, false);
+				$result[$filename] = $df;
 			}
 		}
 
+		// $result will be an array of InstallationDataFile objects
 		return $result;
 	}
 
+	/**
+	* Creates and returns and Options object based on this module arguments.
+	*/
 	function getOptions($args)
 	{
 		$opts = new Options(
@@ -43,41 +49,34 @@
 		return $opts;
 	}
 
+	/**
+	* We know what to do with $result as we are the ones that generates that data
+	* in do_poll() method.
+	*/
 	function do_poll_output($result, $args)
 	{
 		$opts = getOptions($args);
 		$outputType = $opts->getOption("output");
 		$output = "";
-		if ($outputType == "console") {
-			$target = $opts->getOption("target");
-			if ($target != NULL) {
-				$output .= getStatusOutput( $result );
-			} else {
-				$output .= sprintf("Installations found:\n\n");
-				foreach ($result as $target => $data) {
-					$output .= sprintf("%s:\n%s\n", $target, str_repeat("-", strlen($target)));
-					$output .= getStatusOutput($data);
-					$output .= "\n";
-				}
+		$target = $opts->getOption("target");
+
+		// Iterate through each InstallationDataFile object an prints its status
+		foreach ($result as $target => $data) {
+			if ( $outputType == "console") {
+				$output .= sprintf("%s:\n%s\n", $target, str_repeat("-", strlen($target)));
+				// TODO: Is it necessary to call toString()?
+				$output .= $data->toString();
+				$output .= "\n";
+			} else if ($outputType == "jsonplain") {
+				$output .= "\"${target}\":" . $data->toJSON() . ",";
 			}
-		} else if ($outputType == "jsonplain") {
-			$output = json_encode($result);
+		}
+
+		// If "jsonplain" output was set, remove las comma and wrap it up with enclosing brackets
+		if ($outputType == "jsonplain") {
+			$output = "{" . substr($output, 0, -1) . "}";
 		}
 
 		echo $output;
-	}
-
-	function getStatusOutput( $data )
-	{
-		$output = "";
-		if ($data != NULL) {
-			$output .= sprintf("Date: %s\n", $data->datetime);
-			$output .= sprintf("Status: %s\n", $data->status);
-			$output .= sprintf("Current: %s\n", $data->current);
-			$output .= sprintf("Installed: %d\n", $data->installed);
-			$output .= sprintf("To install: %d\n", $data->toInstall);
-			$output .= sprintf("Progress: %d%%\n", ($data->installed/$data->toInstall*100));
-		}
-		return $output;
 	}
 ?>
