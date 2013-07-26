@@ -30,17 +30,17 @@ class WindowsSystemInfo implements SystemInfo
 
 		} catch( Exception $e ) {
 			// TODO: If we could not use WMISystemInfo for windows hosts, find out how we could
-			// do this disregarding what OS we are running on...
+			// do this
 			$user = $cred->getAdminUser();
 			$password =  $cred->getAdminPassword();
 			$this->sysinfo['hostname'] = $hostname;
-
-			// TODO: find out how to determine domain from Unix/Windows enclosed in a Class
-		    // TODO: nmap could do this but will insert an application dependency.
-			$this->sysinfo['domain'] = "Unknown";
-			$this->sysinfo['OSName'] = "Unknown";
-			$this->sysinfo['OSVersion'] = "Unknown";
-			$this->sysinfo['OSArchitecture'] = "Unknown";
+			$this->sysinfo['domain'] = "";
+			// KISS principle: We know it's a windows machine so set it to OS_WINDOWS
+			$this->sysinfo['OSName'] = OS_WINDOWS;
+			// We don't know which architecture it is, but we know that 32bit applications
+			// are 64bit compatible.
+			$this->sysinfo['OSArchitecture'] = OS_ARCH_X86;
+			$this->sysinfo['OSVersion'] = OS_UNKNOWN;
 		}
 	}
 
