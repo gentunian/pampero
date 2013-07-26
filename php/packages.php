@@ -136,8 +136,7 @@
 		{
 			$output = "";
 			$data = json_decode($this->read());
-			$installData = @$data->installData;
-			if ($installData != NULL) {
+			if ($data != NULL && $data != "{}") {
 				$output .= sprintf("Date: %s\n", @$data->datetime);
 				$output .= sprintf("Status: %s\n", @$data->status);
 				$output .= sprintf("Current: %s\n", @$data->current);
@@ -145,6 +144,7 @@
 				$output .= sprintf("To install: %d\n", @$data->toInstall);
 				$output .= sprintf("Progress: %d%%\n", @($data->installed/$data->toInstall*100));
 				$output .= sprintf("Install data:\n");
+				$installData = @$data->installData;
 				if ($installData != NULL) {
 					foreach($data->installData as $key => $value) {
 						$output .= sprintf("\t%s:%s (%s)[%d]\n", $key, $value->id, $value->exitString, $value->exitCode);
@@ -198,6 +198,7 @@
 			// Save and convert to an associative array.
 			$this->args = $this->toAssoc( $args );
 			$this->optional = $this->toAssoc( $optional );
+
 			if (! is_null( $required )) {
 				$this->required = $this->toAssoc( $required );
 
@@ -208,11 +209,11 @@
 				$argsTemplate = array_merge( $this->optional, $this->required );
 
 			} else {
-				$argsTemplate = array_merge( $this->optional );
+				$argsTemplate = $this->optional;
 			}
 
 			// Work with the required and optional arguments setting the
-			// correct value for each option using the template
+			// correct value for each option using the templateç
 			foreach( $this->args as $key => $value ) {
 				$changed = $this->setKeyValueInArray( $key, $value, $argsTemplate );
 
@@ -267,11 +268,14 @@
 		//
 		private function setKeyValueInArray( $findKey, $newValue, &$array ) {
 			$changed = false;
+
 			foreach ( $array as $key => &$value ) {
+
 				if ( is_array( $value )) {
 					$changed = $this->setKeyValueInArray( $findKey, $newValue, $value );
-				} elseif ( $changed = ( $key == $findKey )) {
+				} elseif ( $changed = ( $key === $findKey )) {
 					$value = $newValue;
+					break;
 				}
 			}
 			unset( $value );
@@ -307,16 +311,25 @@
 		}
 	}
 
+	function getArgs() {
+		$args = NULL;
+		global $argv;
+
+		if (! empty($_GET))   $args = $_GET;
+
+		if (! empty($_POST))  $args = array_merge($args, $_POST);
+
+		if (! is_null($argv)) $args = array_merge($args, $argv);
+
+		return $args;
+	}
+
 	/**
 	*
 	**/
 	function parseArgs() {
-		global $argv;
-		if (!is_null($argv))
-			$args = $argv;
-		else
-			$args = $_GET;
 		
+		$args = getArgs();
 		try {
 
 			// Create options for this module based on the object description passed in
@@ -326,7 +339,7 @@
 				$args,
 				// List of optional arguments (keys) with default values.
 				// Missing arguments will be assigned to default values.
-				array("output" => Utils::getDefaultOutput() ),
+				array("output" => Utils::getDefaultOutput()),
 				// Required options, if any.
 				array("command")
 				);
@@ -345,7 +358,7 @@
 			do_it("do_${command}", $args);
 		
 		} catch(Exception $e) {
-			Utils::log($e->getMessage(), KLogger::ERROR);
+			Utils::log($e->getMessage(), KLogger::ERR);
 			echo "Error: ".$e->getMessage()."\n";
 		}
 	}
