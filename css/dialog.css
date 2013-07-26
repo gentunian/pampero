@@ -109,11 +109,21 @@
 
 }
 #dialog-box .bar {
+	/* css3 drop shadow */
+	-webkit-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+	-moz-box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+
+	/* css3 border radius */
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+
 	width: 0%;
-	/*background-color: green;*/
+	padding:0px;
+	margin:0px;
 	height:32px;
-	border-radius: 3px;
 }
+
 #dialog-box .percent { 
 	position: absolute;
 	font-weight: 200;
@@ -121,7 +131,7 @@
 	top:3px;
 }
 .busy_state {
-	background-color: gray;
+	background-color: #666;
 }
 .ok_state {
 	background-color: green;
