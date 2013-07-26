@@ -107,7 +107,8 @@ class PsexecRemoteInstaller implements RemoteInstaller {
 		$psexecOptions .= " /machine:".$machine;
 
 		$string = "cscript //E:JScript ".$this->scriptFileName." $psexecOptions \"$command\" $args";
-
+		
+		set_time_limit(120);
 		$process = popen( $string, "r" );
 		$exitCode = pclose( $process );
 
