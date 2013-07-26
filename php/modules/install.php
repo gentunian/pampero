@@ -135,6 +135,7 @@
 		$opts = new Options(
 			$args,
 			array( "output" => Utils::getDefaultOutput(),
+				"target" => Utils::getInvokingHostname(),
 				"filter" => array(
 					"id" => NULL,
 					"name" => NULL,
@@ -143,8 +144,7 @@
 					"description" => NULL,
 					"installer" => NULL,
 					"installerArgs" => NULL )
-				),
-			array( "target" )
+				)
 			);
 
 		// If no filter option was provided, do not search for packages.
