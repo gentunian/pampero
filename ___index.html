@@ -1,0 +1,376 @@
+<?php session_start(); ?>
+<!DOCTYPE html>
+<html>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<head>
+		<style type="text/css" title="currentStyle">
+		@import "css/demo_page.css";
+		@import "css/demo_table_jui.css";
+		@import "css/themes/smoothness-v1/smoothness-v1.css";
+		@import "css/TableTools_JUI.css";
+		@import "css/dialog.css";
+		/*@import "css/progress.css";*/
+		</style>
+		<style type="text/css">
+		body {
+			font-size: 12px;
+			font-family: "Verdana";
+		}
+		
+		#table_id tr.even  td.sorting_1 {
+			background-color: #C0FFC4;
+		}
+		#table_id tr.even {
+			background-color: #C0FFC4;
+		}
+
+		#table_id tr.odd td.sorting_1 {
+			background-color: #DDFFDD;
+		}
+		#table_id tr.odd {
+			background-color: #DDFFDD;
+		}
+
+		#table_id tr:hover td.sorting_1 {
+			background-color: #95C297;
+		}
+
+		#table_id tr:hover {
+			background-color: #95C297;
+		}
+
+		#table_id tr.row_selected1 td.sorting_1{
+			background-color: #65A297;
+		}
+
+		#table_id tr.row_selected1 {
+			background-color: #65A297;
+		}
+		.errorDetails {
+			background-color: red;
+			color: white;
+			border: 1px solid;
+			border-color: black;
+		}
+		.okDetails {
+			background-color: green;
+			color: white;
+			border: 1px solid;
+			border-color: black;
+		}
+		</style>
+		<script type="text/javascript" charset="utf-8" src="js/jquery.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/jquery.dataTables.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/TableTools.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/ZeroClipboard.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/jquery-ui-1.10.3.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/underscore-min.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/dialog.js"></script>
+		<script>
+		(function() {
+			var method;
+			var noop = function () {};
+			var methods = [
+			'assert', 'clear', 'count', 'debug', 'dir', 'dirxml', 'error',
+			'exception', 'group', 'groupCollapsed', 'groupEnd', 'info', 'log',
+			'markTimeline', 'profile', 'profileEnd', 'table', 'time', 'timeEnd',
+			'timeStamp', 'trace', 'warn'
+			];
+			var length = methods.length;
+			var console = (window.console = window.console || {});
+
+			while (length--) {
+				method = methods[length];
+
+				if (!console[method]) {
+					console[method] = noop;
+				}
+			}
+		}());
+
+		var pDialog = new ProgressDialog();
+
+		var fTable;
+		var dialogTable;
+		var progressPoll;
+		var progressImages = [];
+		progressImages[ 'installing' ] = "loading.gif";
+		progressImages[ 'installOk' ] = "ok.png";
+		progressImages[ 'installError' ] = "error.png";
+
+		function autoDetectOS() {
+			var OSName="Unknown OS";
+			if ( navigator.appVersion.indexOf( "Win" )!=-1 ) OSName="Windows";
+			if ( navigator.appVersion.indexOf( "Mac" )!=-1 ) OSName="MacOS";
+			if ( navigator.appVersion.indexOf( "X11" )!=-1 ) OSName="UNIX";
+			if ( navigator.appVersion.indexOf( "Linux" )!=-1 ) OSName="Linux";
+			return OSName;
+		}
+
+		function createDialogTable( aaDataArray ) {
+			console.log(dialogTable);
+			if (typeof(dialogTable) !== "undefined") {
+				dialogTable.fnClearTable();
+				return;
+			}
+			dialogTable = $( '#dialog-datatable' ).dataTable({
+				"bJQueryUI": true,/*
+				"sDom": 'T<"H"lfr>t<"F"ip>',
+				"oTableTools":{
+					"aButtons": [],
+					"sRowSelect":"single",
+					"fnRowSelected": function (nodes) {
+						console.log(nodes);
+					}
+				},*/
+				"bSort": false,
+				"bPaginate": false,
+				"bFilter": false,
+				"bInfo": false,
+				"sScrollY": "150px",
+				"bDeferRender": true,
+				"bAutoWidth": false,
+				"aaData": aaDataArray,
+				"aoColumns": [
+				{
+					"sTitle": "Aplicacion"
+				},
+				{
+					"mRender": function(  data, type, full ) {
+						console.log( data );
+						return '<img width="24" height="24"  src="images/'+data+'"/>';
+					},
+					"sTitle": "Instalado",
+					"sWidth": "24px",
+					"sClass": "center"
+				}
+				]
+			});
+			$( '#dialog-datatable tbody' ).delegate( 'tr', 'click', function(){
+				var img = $('td img', this);
+				if ( dialogTable.fnIsOpen( this )) {
+					dialogTable.fnClose( this );
+				} else {
+					if ( typeof(img.attr('alt')) === "undefined") return;
+					var message = img.attr('alt').split(',');
+					console.log(message);
+					var cls = 'errorDetails';
+					if (message[1].indexOf('Error (0)') != -1) cls = 'okDetails';
+					dialogTable.fnOpen( this, getErrorTableHTML( message[0], message[1] ), cls );
+				}
+			});
+		}
+		function getErrorTableHTML( statusMessage, errorMessage) {
+			var table = '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:1px;">';
+			table += '<tr><td><b>'+statusMessage+'</b></td></tr>';
+			table += '<tr><td><b>'+errorMessage+'</b></td></tr>';
+			table += '</table>';
+			return table;
+		}
+		function pollProgress() {
+			var d = new Date();
+			/*
+			$.ajax({
+				type: 'GET',
+				dataType: 'json',
+				url: 'php/poll.php?target='+$('#hostname').text(),
+				cache: false,
+				success: updateDialogProgress
+			});
+	        */
+		}
+		function updateDialogProgress( data, textStatus, jqXHR ) {
+			console.log(data);
+
+			if ( data != null ) {
+				var progress = data.length / dialogTable.fnGetData().length;
+				pDialog.setTitle( 'Instalando Componentes... '+data.length+' de '+dialogTable.fnGetData().length );
+				pDialog.setProgress( (progress*100)+'%' );
+
+				for(var i = 0; i < data.length; i++) {
+					var cmd = data[ i ];
+					var icon = $( '#dialog-datatable td img', 0 )[i]; 
+					setInstallData( cmd, icon );
+				}
+			}
+		}
+		function setInstallData( cmd, icon ) {
+			if ( typeof( icon ) !== "undefined" ) {
+				icon.alt = "Error ("+cmd.exitCode+"): "+cmd.status;
+				if ( cmd.exitCode == 0 ) {
+					icon.alt = "Instalado: Sí,"+icon.alt;
+					icon.src = 'images/'+progressImages[ 'installOk' ];
+				} else {
+					icon.alt = "Instalado: No,"+icon.alt;
+					icon.src = 'images/'+progressImages[ 'installError' ];
+				}
+			}
+		}
+		function createSelectOptionsFromArray( id, options , style) {
+			var optionTag = '';
+			for (var i = 0; i < options.length; i++) {
+				optionTag += '<option value="'+options[i]+'">'+options[i]+'</option>';
+			}
+			return '<select id="'+id+'" style="'+style+'">'+optionTag+'</select>';
+		}
+		function buildJSON() {
+			var tt = TableTools.fnGetInstance( 'table_id' );
+			var sData = tt.fnGetSelected();
+			var jsonData = [];
+			for(var i = 0; i < sData.length; i++) {
+				var idx = fTable.fnGetPosition( sData[i] );
+				var rowData = fTable.fnGetData( idx );
+				jsonData.push({
+					id: rowData.id,
+					name: rowData.name,
+					os: rowData.os,
+					arch: $( '#arch', sData[i] ).val(),
+					version: $( '#version', sData[i] ).val()
+				});
+			}
+			return jsonData;
+		}
+		function submitFormCallback() {
+			var jsonData = buildJSON();
+			var args = "";
+			for( var i = 0; i < jsonData.length; i++ ) {
+				args += "id[]="+jsonData[i].id+"&";
+			}
+			var d = new Date();
+			$.ajax({
+				type: "POST",
+				url: 'php/packages.php?command=install&target='+$('#hostname').text()+'&'+args, //?_='+d.getTime(),
+				cache: false,
+				beforeSend: function( jqXHR, settings ){
+					pDialog.show( 'Comenzando instalación...', 'ATENCION: No apague el equipo ni recargue la página. Se está realizando la instalación de los paquetes seleccionados. Aguarde a que termine la instalación.' );
+					//progressPoll = setInterval( pollProgress, 1500 );
+					createDialogTable( [] );
+					for(var i = 0; i < jsonData.length; i++) {
+						$('#dialog-datatable').dataTable().fnAddData( [ jsonData[i].id, progressImages['installing'] ] )
+					}
+					pDialog.setStatus( "busy_state" );
+					return true;
+				},
+				success: function( data, textStatus, jqXHR ) {
+					console.log(data);
+					/*clearInterval( progressPoll );
+					updateDialogProgress( data, textStatus, jqXHR );
+					pDialog.setMessage( 'La instalación terminó. Verifique la lista de abajo. En caso de haber errores <b style="color: red;">haga click la fila</b>, lea el error y comuníquese con el administrador de sistemas.');
+					pDialog.setTitle( 'Instalación completada.' );
+					var status = "ok_state";
+					for( var i = 0; i < data.length; i++ ) {
+						if ( data[i].exitCode != 0 ) {
+							status = "error_state";
+							break;
+						}
+					}
+					pDialog.setStatus( status );*/
+				},
+				dataType: 'json'
+			});
+			return false;
+		}
+
+		$(document).ready( function () {
+			fTable = $('#table_id').dataTable({
+				"bJQueryUI": true,
+				"sDom": '<"H"Tfr>t<"F"lpi>',
+				"oTableTools": {
+					"sRowSelect": "multi",
+					"aButtons": [ "select_all", "select_none" ],
+					/*"fnPreRowSelect": function ( e, nodes ) {
+						console.log(e);
+						console.log(nodes);
+						var node = e.srcElement;
+						if ( typeof(node) === "undefined" ) node = e.target;
+						return !(node.nodeName.toLowerCase() === 'select');
+					},*/
+					"fnRowSelected": function( nodes ) {
+						//$( 'input', nodes).attr( 'checked', true);
+						$( '#submit' ).removeAttr('disabled');
+					},
+					"fnRowDeselected": function( nodes ) {
+						//$( 'input', nodes).attr( 'checked', false);
+						if (TableTools.fnGetInstance( 'table_id' ).fnGetSelected().length == 0) {
+							$( '#submit' ).attr( 'disabled', 'disabled' );
+						}
+					},
+					"sSelectedClass": "row_selected1"
+				},
+				"fnServerData": function ( sSource, aoData, fnCallback ) {
+					$.getJSON( sSource, aoData, function (json) { 
+						fnCallback({ "aaData": json });
+					} );
+				},
+				"bProcessing": true,
+				"sAjaxSource": "php/packages.php?command=list&json=1",
+				"aoColumns": [
+				{ 
+					"mData": "id",
+					"bVisible": false
+				},
+				{ 
+					"mData": "name",
+					"sTitle": "Nombre",
+					"sClass": "left"
+				},
+				{ 
+					"mData": "os",
+					"sTitle": "Sistema Operativo",
+					"sClass": "center"
+				},
+				{ 
+					"mData": "arch",
+					"sTitle": "Arquitectura",
+					"sClass": "center"
+				},
+				{
+					"mData": "version",
+					"sTitle": "Version",
+					"sClass": "center"
+				},
+				{ 
+					"mData": "description",
+					"sTitle": "Descripcion",
+					"sClass": "left"
+				}
+				]
+			});	       
+	        $('#form').submit( submitFormCallback );
+	        $( '.button' ).click( function () {
+	        	if (! $(this).hasClass( 'busy_state' )) {
+	        		$('#dialog-overlay, #dialog-box').hide();
+	        	}
+	        	return false;
+	        });
+	    });
+		</script>
+	</head>
+
+	<body>
+		<?php
+		$hostname = (isset($_GET['hostname']))? $_GET['hostname'] : gethostname();
+		echo '<div id="hostname" style="display:none;">'.$hostname.'</div>';
+		?>
+		
+		<div id="dialog-overlay"></div>
+		<div id="dialog-box">
+			<div class="progress">
+				<div class="bar"></div>
+				<div class="dialog-title"></div>
+			</div>
+			<div class="dialog-content">
+				<div id="dialog-message"></div>
+				<table id="dialog-datatable" style="font-size: 11px;" class="display"></table>
+				<div class="button">Cerrar</div>
+			</div>
+		</div>
+		<form id="form">
+			<table id="table_id" class="display"></table>
+			<div style="text-align:right; padding-top:1em;">
+				<button id="submit" type="submit" disabled>Instalar</button>
+			</div>
+		</form>
+	</body>
+	</html>
+
