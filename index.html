@@ -5,8 +5,8 @@
 		<style type="text/css" title="currentStyle">
 		@import "css/demo_page.css";
 		@import "css/demo_table_jui.css";
-		@import "css/TableTools_JUI.css";
 		@import "css/themes/smoothness-v1/smoothness-v1.css";
+		@import "css/TableTools_JUI.css";
 		@import "css/dialog.css";
 		@import "css/customTableStyles.css";
 		</style>
@@ -15,6 +15,18 @@
 			font-size: 12px;
 			font-family: "Verdana";
 		}
+		.errorDetails {
+			background-color: red;
+			color: white;
+			border: 1px solid;
+			border-color: black;
+		}
+		.okDetails {
+			background-color: green;
+			color: white;
+			border: 1px solid;
+			border-color: black;
+		}
 		</style>
 		<script type="text/javascript" charset="utf-8" src="js/jquery.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/jquery.dataTables.js"></script>
@@ -22,7 +34,7 @@
 		<script type="text/javascript" charset="utf-8" src="js/ZeroClipboard.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/jquery-ui-1.10.3.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/dialog.js"></script>
-		<script type="text/javascript" charset="utf-8" src="js/progressDialogTable.js"></script>
+
 		<script>
 		(function() {
 			var method;
@@ -63,6 +75,7 @@
 
 		// A dialog to display installation progress
 		var dialog;
+		var lastInstalled;
 
 		// progressImages will contain image resources representing the state the index describes
 		// * 'install_busy' index will represent a progress image that denotes installing state.
@@ -90,6 +103,13 @@
 		// Returns <tr> elements that are selected
 		function getSelectedTRs( id ) {
 			return $( id+" .row_selected1");
+		}
+
+		function getDetailsHTMLTable( errorCode, statusMessage ) {
+			var table = '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:1px;">';
+			table += '<tr><td><b>'+statusMessage+' ['+errorCode+']</b></td></tr>';
+			table += '</table>';
+			return table;
 		}
 
 		// DOM ready function
@@ -127,6 +147,7 @@
 				{ "mData": "description", "sTitle": "Descripcion", "sClass": "left"	}
 				]
 			});
+
 	        // Creates a dialog to show installation progress
 	        dialog = Dialog.createProgressDialog(
 	        	"#dialog-box",
@@ -142,10 +163,33 @@
 	        			url: '../php/packages.php?command=poll&target=' + $( '#hostname' ).text(),
 	        			cache: false,
 	        			success: function( data, status, jqXHR ) {
-	        				console.log(data);
+	        			    // Grabs the data for this host
 	        				var data = data[$( '#hostname' ).text()];
-	        				dialog.setTitle( "Instalando " + data.current + " \t("+data.installed+"/"+data.toInstall+")" );
-	        				dialog.setValue( installed );
+
+	        				// Sets the value for the progress dialog
+	        				dialog.setValue( data.installed );
+
+	        				// If installation process has finished, inform and stop polling.
+	        				// Else, set the current info and continue polling
+	        				if ( data.status == "DONE" ) {
+	        					dialog.setTitle( "Instalación Completada \t("+data.installed+"/"+data.toInstall+")" );
+	        					dialog.stopProgressQuery();
+	        				} else {
+	        					dialog.setTitle( "Instalando " + data.current + " \t("+data.installed+"/"+data.toInstall+")" );
+	        				}
+
+	        				// Updates installed packages visual information providing the adequate image.
+	        				// In order to optimize we keep track of the last installed package by using
+	        				// a (sigh) global variable.
+	        				for ( var i = lastInstalled; i < data.installed; i++ ) {
+	        					var id = data.installData[i].id;
+	        					var icon = document.getElementById(id);
+	        					icon.src = ( data.installData[i].exitCode == 0 )? progressImages['install_ok'] : progressImages['install_error'];
+	        					icon.alt = data.installData[i].exitCode + "," + data.installData[i].exitString;
+	        				}
+
+	        				// Sets the last installed package index
+	        				lastInstalled = data.installed;
 	        			},
 	        			error: function( jq, status, er){
 	        				console.log(status);
@@ -158,6 +202,11 @@
 
 	        // Creates the datatable
 	        $( '#dialog-table' ).dataTable({
+	        	"sDom": '<"H"Tfr>',
+				"oTableTools": {
+					"sRowSelect": "multi",
+					"aButtons": []
+				},
 				"bJQueryUI": true,
 				"bSort": false,
 				"bPaginate": false,
@@ -170,8 +219,7 @@
 				{ "sTitle": "Aplicacion" },
 				{
 					"mRender": function(  data, type, full ) {
-						console.log( data );
-						return '<img width="24" height="24"  src="'+data+'"/>';
+						return '<img id="'+full[0]+'" name="'+full[0]+'" width="24" height="24"  src="'+data+'"/>';
 					},
 					"sTitle": "Instalado",
 					"sWidth": "24px",
@@ -179,11 +227,40 @@
 				}
 				]
 			});
+
+            // Adds a click handler for dialog table rows
+	        $( '#dialog-table tbody' ).delegate( 'tr', 'click', function(){
+	        	// Retrieves the icon img
+	        	var img = $( 'td img', this );
+
+	        	// Retrieves the dialog-table datatable reference
+	        	var table = $( '#dialog-table' ).dataTable();
+
+	        	// If the row is open, close it.
+	        	if ( table.fnIsOpen( this )) {
+	        		table.fnClose( this );
+	        	} else {
+	        		// If no 'alt' property was set for img, do nothing;
+	        		if ( typeof( img.attr('alt') ) === "undefined") return;
+
+	        		// Gets the 'alt' property and split it with ','
+	        		var message = img.attr( 'alt' ).split( ',' );
+	        		console.log(img.attr('alt'));
+	        		var cls = 'errorDetails';
+	        		if ( message[0] == '0' ) cls = 'okDetails';
+
+	        		table.fnOpen( this, getDetailsHTMLTable( message[0], message[1] ), cls );
+	        	}
+			});
+			
             // Binds the submit button
 			$( '#form' ).submit( function() {
 				// Gets selected data
 				var rows = getSelectedRows( "#table_id" );
 				dialog.max = rows.data.length;
+
+				// Clears the dialog table
+				$('#dialog-table').dataTable().fnClearTable();
 
 				// Loads dialog table with data
 				for(var i = 0; i < rows.data.length; i++) {
@@ -199,13 +276,14 @@
 					cache: false,
 					url: url,
 					beforeSend: function( jqXHR, settings ) {
+						lastInstalled = 0;
 						dialog.startProgressQuery();
 						dialog.show();
 					},
 					success: function( data, status, jqXHR) {
 						console.log("success: ");
-						console.log(data);
-						dialog.stopProgressQuery();
+						//console.log(data);
+						//dialog.stopProgressQuery();
 					},
 					error: function( jq, status, er ) {
 						console.log("error: "+status+" - "+er);
