@@ -96,7 +96,7 @@ var Dialog = {
 				var maskHeight = $( window ).height();  
 				var maskWidth = $( window ).width();
 				var dialogTop =  ( maskHeight/3 ) - ($( this.id ).height());  
-				var dialogLeft = ( maskWidth/2 ) - ($( this.id ).width()/2); 
+				var dialogLeft = ( maskWidth/2 ) - ($( this.id ).width()/2);
 				$( '#dialog-overlay' ).css({
 					height:maskHeight,
 					width:maskWidth
@@ -105,10 +105,12 @@ var Dialog = {
 					top:150,
 					left:dialogLeft
 				}).show();
+
+				// really?
+				this.setState( "busy_state" );
 			},
 			hide: function() {
 				$( '#dialog-overlay,'+this.id ).hide();
-				//$( this.id ).hide();
 			},
 			setTitle: function( title ) {
 				$( '.dialog-title' ).html( title );

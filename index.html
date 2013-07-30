@@ -152,7 +152,7 @@
 	        dialog = Dialog.createProgressDialog(
 	        	"#dialog-box",
 	        	{ 
-	        		title: "Comenzando la Instalación",
+	        		title: "Diálogo de progreso",
 	        		message: "ATENCION: No apague el equipo ni recargue la página. "
 	        		+ "Se está realizando la instalación de los paquetes seleccionados. "
 	        		+ "Aguarde a que termine la instalación.",
@@ -172,14 +172,28 @@
 	        				// If installation process has finished, inform and stop polling.
 	        				// Else, set the current info and continue polling
 	        				if ( data.status == "DONE" ) {
+	        					// Sets the title
 	        					dialog.setTitle( "Instalación Completada \t("+data.processed+"/"+data.toInstall+")" );
+
+	        					// Stops polling server
 	        					dialog.stopProgressQuery();
+
+	        					// A generic message explaining whats going on...
 	        					var message = "El proceso de instalación terminó";
+
+	        					// Program to default. If an error was found, "error_state"
+	        					// will be used instead.
+	        					var state = "ok_state";
 	        					if ( data.errors > 0 ) {
 	        						message += " con <span style='color:red; font-weight: bold;'>errores</span>. Verifique los errores seleccionando las filas de abajo"
 	        						+ " y solicite asistencia al administrador de sistemas";
-	        						dialog.setState( "error_state" );
+	        						state =  "error_state";
 	        					}
+
+	        					// Sets the state
+	        					dialog.setState( state );
+
+	        					// Sets the message
 	        					dialog.setMessage( message + "." );
 	        				} else {
 	        					dialog.setTitle( "Instalando " + data.current + " \t("+data.processed+"/"+data.toInstall+")" );
@@ -285,6 +299,7 @@
 					beforeSend: function( jqXHR, settings ) {
 						lastProcessed = 0;
 						dialog.startProgressQuery();
+						dialog.setTitle( "Comenzando la Instalación" );
 						dialog.show();
 					},
 					success: function( data, status, jqXHR) {
