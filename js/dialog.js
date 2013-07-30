@@ -85,7 +85,7 @@ var Dialog = {
 		// Append divs to id element
 		$( id ).append( '<div class="dialog-title">'+options.title+'</div>'
 			+'<div class="dialog-content"><div id="dialog-message">'
-			+'<p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span></p><span>'+options.message+'</span></div>'
+			+'<p><span class="ui-icon ui-icon-alert" style="float: left; margin: 0 7px 20px 0;"></span></p><span id="dialog-text-message">'+options.message+'</span></div>'
 			+'<div id="content"></div><div class="button">'+options.closeText+'</div>'
 			);
 
@@ -93,7 +93,7 @@ var Dialog = {
 		var dialog = {
 			id: id,
 			show: function() {
-				var maskHeight = $( document ).height();  
+				var maskHeight = $( window ).height();  
 				var maskWidth = $( window ).width();
 				var dialogTop =  ( maskHeight/3 ) - ($( this.id ).height());  
 				var dialogLeft = ( maskWidth/2 ) - ($( this.id ).width()/2); 
@@ -111,10 +111,10 @@ var Dialog = {
 				//$( this.id ).hide();
 			},
 			setTitle: function( title ) {
-				$( '.dialog-title' ).text( title );
+				$( '.dialog-title' ).html( title );
 			},
 			setMessage: function( msg ) {
-				$( this.id+'>span:last-child' ).text( msg );
+				$( '#dialog-text-message' ).html( msg );
 			},
 			setContent: function( html ) {
 				$( '#content' ).html( html );
