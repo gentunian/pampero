@@ -140,7 +140,8 @@
 				$output .= sprintf("Date: %s\n", @$data->datetime);
 				$output .= sprintf("Status: %s\n", @$data->status);
 				$output .= sprintf("Current: %s\n", @$data->current);
-				$output .= sprintf("Installed: %d\n", @$data->installed);
+				$output .= sprintf("Errors: %d\n", @$data->errors);
+				$output .= sprintf("Procesed: %d\n", @$data->processed);
 				$output .= sprintf("To install: %d\n", @$data->toInstall);
 				$output .= sprintf("Progress: %d%%\n", @($data->installed/$data->toInstall*100));
 				$output .= sprintf("Install data:\n");
