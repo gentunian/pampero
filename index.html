@@ -75,7 +75,7 @@
 
 		// A dialog to display installation progress
 		var dialog;
-		var lastInstalled;
+		var lastProcessed;
 
 		// progressImages will contain image resources representing the state the index describes
 		// * 'install_busy' index will represent a progress image that denotes installing state.
@@ -167,29 +167,36 @@
 	        				var data = data[$( '#hostname' ).text()];
 
 	        				// Sets the value for the progress dialog
-	        				dialog.setValue( data.installed );
+	        				dialog.setValue( data.processed );
 
 	        				// If installation process has finished, inform and stop polling.
 	        				// Else, set the current info and continue polling
 	        				if ( data.status == "DONE" ) {
-	        					dialog.setTitle( "Instalación Completada \t("+data.installed+"/"+data.toInstall+")" );
+	        					dialog.setTitle( "Instalación Completada \t("+data.processed+"/"+data.toInstall+")" );
 	        					dialog.stopProgressQuery();
+	        					var message = "El proceso de instalación terminó";
+	        					if ( data.errors > 0 ) {
+	        						message += " con <span style='color:red; font-weight: bold;'>errores</span>. Verifique los errores seleccionando las filas de abajo"
+	        						+ " y solicite asistencia al administrador de sistemas";
+	        						dialog.setState( "error_state" );
+	        					}
+	        					dialog.setMessage( message + "." );
 	        				} else {
-	        					dialog.setTitle( "Instalando " + data.current + " \t("+data.installed+"/"+data.toInstall+")" );
+	        					dialog.setTitle( "Instalando " + data.current + " \t("+data.processed+"/"+data.toInstall+")" );
 	        				}
 
-	        				// Updates installed packages visual information providing the adequate image.
-	        				// In order to optimize we keep track of the last installed package by using
+	        				// Updates installed/processed packages visual information providing the adequate image.
+	        				// In order to optimize we keep track of the last installed/processed package by using
 	        				// a (sigh) global variable.
-	        				for ( var i = lastInstalled; i < data.installed; i++ ) {
+	        				for ( var i = lastProcessed; i < data.processed; i++ ) {
 	        					var id = data.installData[i].id;
 	        					var icon = document.getElementById(id);
 	        					icon.src = ( data.installData[i].exitCode == 0 )? progressImages['install_ok'] : progressImages['install_error'];
 	        					icon.alt = data.installData[i].exitCode + "," + data.installData[i].exitString;
 	        				}
 
-	        				// Sets the last installed package index
-	        				lastInstalled = data.installed;
+	        				// Sets the last processed package index
+	        				lastProcessed = data.processed;
 	        			},
 	        			error: function( jq, status, er){
 	        				console.log(status);
@@ -198,7 +205,7 @@
 	        	});
 
 	        // Sets the content for the dialog
-	        dialog.setContent('<table id="dialog-table" style="font-size: 11px;" class="display"></table>');
+	        dialog.setContent('<br/><table id="dialog-table" style="font-size: 11px;" class="display"></table>');
 
 	        // Creates the datatable
 	        $( '#dialog-table' ).dataTable({
@@ -276,7 +283,7 @@
 					cache: false,
 					url: url,
 					beforeSend: function( jqXHR, settings ) {
-						lastInstalled = 0;
+						lastProcessed = 0;
 						dialog.startProgressQuery();
 						dialog.show();
 					},
