@@ -29,7 +29,7 @@
 			$this->status = self::STATUS_INIT;
 			$this->packages = $packages;
 			$this->target = $target;
-			$this->df = new DataFile("install", $this->target);
+			$this->df = new InstallationDataFile("install", $this->target);
 		}
 
 		/**
@@ -57,8 +57,9 @@
 				"datetime" => date('l jS \of F Y h:i:s A'),
 				"current" => "",
 				"status" => self::STATUS_INSTALLING,
+				"errors" => 0,
 				"toInstall" => count($this->packages),
-				"installed" => 0,
+				"processed" => 0,
 				"installData" => array()
 				);
 			$this->df->write($installData);
@@ -85,7 +86,12 @@
 		    	// Increment $installed variable althought package may not be installed due to
 		    	// install errors. Install errors for a specific package can be located in
 		    	// the "installData" key. The value will be a CommandResult object.
-				$installData['installed']++;
+				$installData['processed']++;
+
+				// Increment error counter if error found
+				if ( $cmdResult[$packageId]->getExitCode() != 0 ) {
+					$installData['errors']++;
+				}
 
 	            // Get the array from CommandResult object merged with the package id.
 				$data =  array_merge(array("id" => $packageId), $cmdResult[ $packageId ]->toArray());
