@@ -304,16 +304,36 @@
 			return $this->store;
 		}
 
+		public function getOptionsAsString() {
+			return $this->arrayToString($this->getOptions());
+		}
+
 		// Returns the options that aren't used by this object. When using
 		// $strictSet == true and constructor doesn't throw an exception
 		// then, this set should be empty.
 		public function getDisposedOptions() {
 			return $this->args;
 		}
+
+		public function getDisposedOptionsAsString() {
+			return $this->arrayToString($this->getDisposedOptions());
+		}
+
+		private function arrayToString($array) {
+			$output = "";
+			foreach ($array as $key => $value) {
+				if (is_array($value)) {
+					$output .= $this->arrayToString($value);
+				} else {
+					$output .= "${key}=${value} ";
+				}
+			}
+			return $output;
+		}
 	}
 
 	function getArgs() {
-		$args = NULL;
+		$args = array();
 		global $argv;
 
 		if (! empty($_GET))   $args = $_GET;
@@ -349,7 +369,9 @@
 		    $command = $packagesOpts->getOption("command");
 		    $ip = Utils::getInvokingIP();
 		    $host = Utils::getInvokingHostname();
-		    Utils::log("Request from ${host} (${ip}): command=${command} output=" . $packagesOpts->getOption("output"), KLogger::INFO);
+		    $arguments = $packagesOpts->getOptionsAsString() . $packagesOpts->getDisposedOptionsAsString();
+ 		    Utils::log("Request from ${host} (${ip}): '${arguments}'", KLogger::INFO);
+
 
 		    // Import the module that has the same name as the command
 			do_import($command);
