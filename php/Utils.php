@@ -10,7 +10,7 @@ class Utils
 	final private function __clone() {}
 	static private $logger;
 
-	public static function log($msg, $sev)
+	public static function log($msg, $sev = KLogger::INFO)
 	{
 		if (self::$logger == NULL)
 			self::$logger = new KLogger(LOG_DIR, KLogger::INFO);
