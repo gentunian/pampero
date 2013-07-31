@@ -80,6 +80,7 @@
 				$installData['current'] = $packageId;
 				$this->df->write($installData);
 
+				Utils::log("Realizando instalación de '${$packageId}' para " . $this->target);
 		    	// Run the installation of $installer for $target
 				$cmdResult[$packageId] = $installer->install($packageInstallerFile, $packageInstallerArgs, $this->target, $credentials);
 
