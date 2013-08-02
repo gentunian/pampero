@@ -21,20 +21,6 @@
 	// Modules shouldn't be called directly. Use this constant
 	// to decide inside a module
 	define( 'FROM_PACKAGES', 'defined' );
-	spl_autoload_register();
-	spl_autoload_register( function ( $class ) {
-		if ( class_exists( $class ))
-			return true;
-		$fileName = $class . ".php";
-		$it = new RecursiveDirectoryIterator( __DIR__ , FilesystemIterator::SKIP_DOTS );
-		foreach( new RecursiveIteratorIterator( $it, RecursiveIteratorIterator::LEAVES_ONLY ) as $file ) {
-			if ( $file->getFilename() == $fileName ) {
-				require_once( $file );
-				return true;
-			}
-		}
-		return false;
-	});
 
 	/**
 	* DataFile class:
@@ -423,5 +409,4 @@
 	}
 
 	parseArgs();
-
 ?>

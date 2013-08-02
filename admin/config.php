@@ -2,6 +2,22 @@
 
 	require_once( __DIR__ . '/../php/KLogger.php' );
 
+	/* TODO: REVIEW */
+	spl_autoload_register();
+	spl_autoload_register( function ( $class ) {
+		if ( class_exists( $class ))
+			return true;
+		$fileName = $class . ".php";
+		$it = new RecursiveDirectoryIterator( __DIR__ . "/../php", FilesystemIterator::SKIP_DOTS );
+		foreach( new RecursiveIteratorIterator( $it, RecursiveIteratorIterator::LEAVES_ONLY ) as $file ) {
+			if ( $file->getFilename() == $fileName ) {
+				require_once( $file );
+				return true;
+			}
+		}
+		return false;
+	});
+
 	define( 'CONFIG_INI', __DIR__ . '/config.ini' );
 
 	if (! file_exists( CONFIG_INI )) {
