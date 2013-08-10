@@ -37,7 +37,7 @@
 		*/
 		public function __destruct()
 		{
-			//$this->df->delete();
+			$this->df->delete();
 		}
 
 		/**
@@ -54,7 +54,8 @@
     	    // and installtion process data variables.
 			$cmdResult = array();
 			$installData = array(
-				"datetime" => date('l jS \of F Y h:i:s A'),
+				//"datetime" => date('l jS \of F Y h:i:s A'),
+				"datetime" => date('D, d M Y H:i:s'),
 				"current" => "",
 				"status" => self::STATUS_INSTALLING,
 				"errors" => 0,
@@ -80,7 +81,7 @@
 				$installData['current'] = $packageId;
 				$this->df->write($installData);
 
-				Utils::log("Realizando instalación de '${$packageId}' para " . $this->target);
+				Utils::log("Realizando instalación de '${packageId}' para " . $this->target);
 		    	// Run the installation of $installer for $target
 				$cmdResult[$packageId] = $installer->install($packageInstallerFile, $packageInstallerArgs, $this->target, $credentials);
 
@@ -108,7 +109,7 @@
 			$installData['status'] = self::STATUS_DONE;
 			$this->df->write($installData);
 
-			return $installData;
+			return $this->df->toJSON();
 		}
 	}
 
@@ -117,6 +118,9 @@
 	*/
 	function do_install( $args )
 	{
+		// TODO: TRY/CATCH and manage I/O errors. We are being catched by packages.php so
+		// we must write our try/catch in order to delete temporal file
+
 		// Get options
 		$opts = getOptionsFromArgs($args);
 		$target = $opts->getOption("target");
@@ -125,10 +129,10 @@
 		$machine = getTargetMachine($target);
 
 		// Get the list of packages to be installed
-		$packages = getPackageData($args);
+		$packages = getPackageData($machine->getSystemInfo()->getHostname(), $opts);
 
 		// Create a new installation process for $target with desirde $packages
-		$installProcess = new InstallProcess($target, $packages);
+		$installProcess = new InstallProcess($machine->getSystemInfo()->getHostname(), $packages);
 
 		// Do the installation and get installation data
 		$installData = $installProcess->installPackages();
@@ -141,47 +145,53 @@
 		// Parse $args
 		$opts = new Options(
 			$args,
-			array( "output" => Utils::getDefaultOutput(),
-				"target" => Utils::getInvokingHostname(),
-				"filter" => array(
-					"id" => NULL,
-					"name" => NULL,
-					"arch" => NULL,
-					"os" => NULL,
-					"description" => NULL,
-					"installer" => NULL,
-					"installerArgs" => NULL )
-				)
+			array(
+				"output" => Utils::getDefaultOutput(),
+				"target" => Utils::getInvokingHostname()
+				),
+			array("id")
 			);
 
 		// If no filter option was provided, do not search for packages.
 		// Doing so will get a list of all packages and thats not what we
 		// want when installing.
-		$filter = $opts->getOption( "filter" );
+		//$filter = $opts->getOption( "filter" );
 		
-		if ( count( $filter ) == 0 ) {
-			throw new Exception( "No search criteria provided." );
-		}
+		//if ( count( $filter ) == 0 ) {
+		//	throw new Exception( "No search criteria provided." );
+		//}
 
 		return $opts;
 	}
 
-	function getTargetMachine( $target )
+	function getTargetMachine($target)
 	{
 		// Create machine based on $target and $credProv
 		$machine = new Machine( $target );
 		return $machine;
 	}
 
-	function getPackageData( $args )
+	function getPackageData($target, $opts)
 	{
         // Include list.php in order to retrieve a list of available
 		// packages based on search arguments
-		require_once( "list.php" );
+		require_once("list.php");
 
 		// Retrive the array list of packages based on arguments from list.php module
 		// do_list() returns an array based data.
-		$packages = do_list( $args );
+		//$packages = do_list( $args );
+		$filterData = array(
+			"options" => array(
+				"exact" => true,
+				"target"=> $target
+				),
+			"filter" => array("id"=>$opts->getOption("id"))
+			);
+		$finder = new PackageFinder( $filterData, PACKAGES_DIR, MANIFEST_FILENAME );
+
+		// Retrieve found packages
+		$packages = $finder->getPackages();
+
 		return $packages;
 	}
 
@@ -190,8 +200,6 @@
 	*/
 	function do_install_output( $result, $args )
 	{
-		$installData = $result['installData'];
-
 		$opts = new Options(
 			$args,
 			array( "output" => Utils::getDefaultOutput() )
@@ -200,34 +208,11 @@
 		$output = "";
 		$outputType = $opts->getOption( "output" );
 
-		// Encode JSON if plain json is desired
 		if ( $outputType == "jsonplain" ) {
-			$output = json_encode( $result );
-		}
+			$output .= $result;
+		} else if ( $outputType == "console" ) {
+			$output .= $result->toString();
 
-	    // Encode JSON  with pretty print if html json is desired
-	    // and add extra <pre> tags.
-		else if ( $outputType == "jsonhtml" ) {
-			$output = "<pre>" . json_encode( $result, JSON_PRETTY_PRINT ) . "</pre>";
-		}
-
-		// The options left are html or console. HTML only adds pre tags
-		else {
-			$output = sprintf("\nSumario:\n%s\n", str_repeat("-", strlen("sumario")));
-			$okCount = 0;
-			foreach( $installData as $key => $value) {
-				$output .= sprintf("\t%s:\n\t%s\n\t* %s\n\n", $value['id'], str_repeat("-", strlen( $value['id'] )), $value['exitString']);
-				if ( $value['exitCode'] == 0 )
-					$okCount++;
-			}
-			$output .= sprintf("\nSe instalaron %d programas correctamente de un total de %d.\n", $okCount, count( $installData ));
-
-			if ( $outputType == "html" ) {
-				$output = "<pre>".$output."</pre>";
-
-			} else if ( $output == "console" ) {
-
-			}
 		}
 
 		return $output;
