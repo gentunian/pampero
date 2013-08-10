@@ -16,11 +16,11 @@
 		$result = [];
 		$opts = getOptions($args);
 		$target = $opts->getOption("target");
-
 		// Do not iterate through all files if a target was provided
 		if ($target != NULL) {
-			$df = new InstallationDataFile("install", $target, false);
-			$result[$target] = $df;
+			$machine = new Machine($target);
+			$df = new InstallationDataFile("install", $machine->getSystemInfo()->getHostname(), false);
+			$result = $df;
 		} else {
 			// Gather all information from installations made
 			foreach(glob(LOG_DIR . "/install/*") as $filepath){
@@ -60,23 +60,29 @@
 		$output = "";
 		$target = $opts->getOption("target");
 
+		if (! is_array($result)) {
+			if ($outputType == "console") {
+				$output .= $result->toString();
+			} elseif ($outputType == "jsonplain") {
+				$output .= $result->toJSON();
+			}
+		} else {
 		// Iterate through each InstallationDataFile object an prints its status
-		foreach ($result as $target => $data) {
-			if ( $outputType == "console") {
-				$output .= sprintf("%s:\n%s\n", $target, str_repeat("-", strlen($target)));
+			foreach ($result as $target => $data) {
+				if ( $outputType == "console") {
+					$output .= sprintf("%s:\n%s\n", $target, str_repeat("-", strlen($target)));
 				// TODO: Is it necessary to call toString()?
-				$output .= $data->toString();
-				$output .= "\n";
-			} else if ($outputType == "jsonplain") {
-				$output .= "\"${target}\":" . $data->toJSON() . ",";
+					$output .= $data->toString();
+					$output .= "\n";
+				} else if ($outputType == "jsonplain") {
+					$output .= "\"${target}\":" . $data->toJSON() . ",";
+				}
+			}
+		    // If "jsonplain" output was set, remove las comma and wrap it up with enclosing brackets
+			if ($outputType == "jsonplain") {
+				$output = "{" . substr($output, 0, -1) . "}";
 			}
 		}
-
-		// If "jsonplain" output was set, remove las comma and wrap it up with enclosing brackets
-		if ($outputType == "jsonplain") {
-			$output = "{" . substr($output, 0, -1) . "}";
-		}
-
-		echo $output;
+		return $output;
 	}
 ?>
