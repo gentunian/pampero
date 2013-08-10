@@ -2,11 +2,7 @@
 	<html>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<head>
-		
-	
-
 		<style>
-
 		body, html {
 			/*
 			font-size: 12px;
@@ -14,17 +10,20 @@
 			*/
 			height: 100%;
 		}
-		.errorDetails {
-			background-color: red;
-			color: white;
-			border: 1px solid;
-			border-color: black;
+		ul.dropdown-menu > li:hover {
+
+			color: #ffffff;
+			text-decoration: none;
+			background-color: #357ebd;
+			background-image: -webkit-gradient(linear, left 0%, left 100%, from(#428bca), to(#357ebd));
+			background-image: -webkit-linear-gradient(top, #428bca, 0%, #357ebd, 100%);
+			background-image: -moz-linear-gradient(top, #428bca 0%, #357ebd 100%);
+			background-image: linear-gradient(to bottom, #428bca 0%, #357ebd 100%);
+			background-repeat: repeat-x;
+			filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff428bca', endColorstr='#ff357ebd', GradientType=0);
 		}
-		.okDetails {
-			background-color: green;
-			color: white;
-			border: 1px solid;
-			border-color: black;
+		ul.dropdown-menu > li {
+			padding: 5px;
 		}
 		#table_id tbody > tr > td { 
 			white-space: nowrap;
@@ -32,12 +31,12 @@
 			overflow: hidden;
 		}
 		</style>
-		<link type="text/css" rel="stylesheet" href="css/dialog.css">
-		<link rel="stylesheet" href="css/bootstrap.min.css">
+
+		<link rel="stylesheet" href="css/bootstrap.css">
 		<link rel="stylesheet" href="css/DT_bootstrap.css">
 		<link rel="stylesheet" href="css/bootstrap-glyphicons.css">
 
-		<script type="text/javascript" charset="utf-8" src="js/jquery.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/jquery-dev.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/jquery.dataTables.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/TableTools.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/ZeroClipboard.js"></script>
@@ -45,7 +44,7 @@
 		<script type="text/javascript" charset="utf-8" src="js/dialog.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/bootstrap.min.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/DT_bootstrap.js"></script>
-
+		<script type="text/javascript" charset="utf-8" src="js/dataTables.reloadAjax.plugin.js"></script>
 		<script>
 		(function() {
 			var method;
@@ -78,25 +77,6 @@
 			return OSName;
 		}
 
-		// The table used to show available programs
-		//var fTable;
-
-		// The table used to report installation. This table will be embedded in the progress dialog
-		//var reportTable;
-
-		// A dialog to display installation progress
-		var dialog;
-		var lastProcessed;
-
-		// progressImages will contain image resources representing the state the index describes
-		// * 'install_busy' index will represent a progress image that denotes installing state.
-		// * 'install_ok' index will represent a progress image that denotes OK state.
-		// * 'install_error' index will represent a progress image that denotes ERROR state.
-		var progressImages = [];
-		progressImages[ 'install_busy' ] = "images/loading.gif";
-		progressImages[ 'install_ok' ] = "images/ok.png";
-		progressImages[ 'install_error' ] = "images/error.png";
-
 		// Returns a pair of (rows, url) where 'rows' is an array of rowData
 		// and 'url' is the url to send to the server with selected data
 		function getSelectedRows( id ) {
@@ -113,28 +93,32 @@
 
 		// Returns <tr> elements that are selected
 		function getSelectedTRs( id ) {
-			return $( id+" .row_selected1");
+			return $( id+" .active");
 		}
 
-		function getDetailsHTMLTable( errorCode, statusMessage ) {
-			var table = '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:1px;">';
-			table += '<tr><td><b>'+statusMessage+' ['+errorCode+']</b></td></tr>';
-			table += '</table>';
-			return table;
+		function loadDataFromUserSelection() {
+			var os = $( '#OSButton>#value' ).text();
+			var arch =  $( '#archButton>#value' ).text();
+			var url = "php/packages.php?command=list&os=" + os + "&arch=" + arch;
+			$( '#table_id' ).dataTable().fnReloadAjax( url );
+		}
+
+		function toProgressDialog() {
+			return "ProgressDialog.html?d=" + Date().value;
 		}
 
 		// DOM ready function
 		$( document ).ready( function() {
 			$( '#auto' ).click( function ( e ){
-				
 				// If we clicked the anchor and it had 'glyphicon-ok' class,
 				// then te current state is unchecked.
 				var unchecked = $( 'div>span.glyphicon', this ).hasClass( "glyphicon-ok" );
 				if ( !unchecked ) {
 					$( 'div>span.glyphicon', this ).removeClass( "glyphicon-remove" );
 					$( 'div>span.glyphicon', this ).addClass( "glyphicon-ok" );
-					<?php
-					require_once('admin/config.php');
+
+					<?php /* --- PHP code --- */
+ 					require_once('admin/config.php');
 					global $os, $arch;
 					$hostname = gethostbyaddr($_SERVER['REMOTE_ADDR']);
 					$machine = new Machine($hostname);
@@ -145,48 +129,88 @@
 						$os = OS_UNKNOWN;
 						$arch = OS_UNKNOWN;
 					}
-					?>
-					$( '#OSSelect' ).html( "<?php echo htmlentities($os); ?>" );
-					$( '#archSelect' ).html( "<?php echo htmlentities($arch); ?> ");
-					$( '#OSSelect' ).attr( "disabled", "disabled" );
-					$( '#archSelect' ).attr( "disabled", "disabled" );
+					?>/* -- End PHP code --- */
+
+					$( '#OSButton' ).html( "<?php echo htmlentities($os); ?>" );
+					$( '#archButton' ).html( "<?php echo htmlentities($arch); ?> ");
+					$( '#OSButton' ).attr( "disabled", "disabled" );
+					$( '#archButton' ).attr( "disabled", "disabled" );
+					$( '#table_id' ).dataTable().fnReloadAjax( 'php/packages.php?command=list&target=' + $( '#hostname' ).text() );
 				} else {
 					$( 'div>span.glyphicon', this ).removeClass( "glyphicon-ok" );
 					$( 'div>span.glyphicon', this ).addClass( "glyphicon-remove" );
-					$( '#OSSelect' ).removeAttr( "disabled" );
-					$( '#archSelect' ).removeAttr( "disabled" )
-					$( '#OSSelect' ).html( "Seleccione.. <span class='caret'/>" );
-					$( '#archSelect' ).html( "Seleccione.. <span class='caret'/>" );
+
+					var osButton = $( '#OSButton' );
+					osButton.removeAttr( "disabled" );
+					osButton.html( "Seleccione.. <span class='caret'/>" );
+					osButton.trigger( "change" );
+
+					var archButton = $( '#archButton' );
+					archButton.removeAttr( "disabled" )
+					archButton.html( "Seleccione.. <span class='caret'/>" );
+					archButton.trigger( "change" );
+
 					$( '.dropdown-menu li').click( function ( e ) {
 						var value = $(this).text();
-						var group = $(this).parents('.btn-group');
-						$( 'button', group ).html(value+" <span class='caret'/>");
+						var group = $(this).parents( '.btn-group' );
+						var button = $( 'button', group );
+						button.html( "<span id='value'>" + value + "</span><span class='caret'/>" );
+						button.trigger("change");
 					});
 				}
 			});
-			$( '#auto' ).attr( "checked", "checked" );
-			$( '#auto' ).click();
 
-			// Creates the DataTable
+	        // Sets the checked attribute to 'checked' to simulate a checkbox 
+	        $( '#auto' ).attr( "checked", "checked" );
+
+	        // change event will be triggered from li.click() and from #auto.click() event.
+	        // This is the only "cleaner" way to react on change event from a <span> element
+	        $( '#OSButton' ).on('change', loadDataFromUserSelection );
+	        $( '#archButton' ).on('change', loadDataFromUserSelection );
+
+			// Creates the DataTable with the initial url
+			/*
+			var url = "php/packages.php?command=list&"
+			+ "target=" + $( '#hostname' ).text()
+			+ "&arch=" + $( '#archButton' ).text()
+			+ "&os=" + $( '#OSButton' ).text();
+			*/
 			var table = $( '#table_id' ).dataTable({
-				"sDom": "<'row'r>Tt<'row'<'col-lg-6'p>>",
+				"sDom": "<'row'<'col-lg-6'T><'col-lg-6'f>r>t<'row-fluid'<'span6'><'span6'p>>",
+				"oLanguage": {
+					"sLoadingRecords": "Cargando -- Por favor espere...",
+					"sProcessing": "Procesando...",
+					"sZeroRecords": "No hay registros.",
+					"sSearch": "",
+					"oPaginate": {
+						"sPrevious": "Anterior",
+						"sNext": "Siguiente",
+						"sLast": "Último",
+						"sFirst": "Primero"
+					}
+				},
 				"sPaginationType": "bootstrap",
 				"oTableTools": {
 					"sRowSelect": "multi",
-					"aButtons": "",
+					"aButtons": [
+					{
+						"sExtends": "select_all",
+						"sButtonText": "Todo"
+					},
+					{
+						"sExtends": "select_none",
+						"sButtonText": "Ninguno"
+					}
+					],
 					"fnRowSelected": function( nodes ) {
 						$( '#install' ).removeAttr( 'disabled' );
-						$( 'tr.active span').addClass( 'glyphicon-ok' );
+						$( 'span', nodes ).addClass( 'glyphicon-ok' )
 					},
 					"fnRowDeselected": function( nodes ) {
 						if (TableTools.fnGetInstance( 'table_id' ).fnGetSelected().length == 0) {
 							$( '#install' ).attr( 'disabled', 'disabled' );
 						}
-						
-					},
-					"fnPreRowSelect": function( e, nodes ) {
-						$( 'span',e.currentTarget ).removeClass( 'glyphicon-ok' );
-						return true;
+						$( 'span', nodes ).removeClass( 'glyphicon-ok' )
 					},
 					"sSelectedClass": "active"
 				},
@@ -195,11 +219,10 @@
 						fnCallback({ "aaData": json });
 					}).complete( function(){
 						var table = $( '#table_id' ).dataTable();
-						$( table.fnGetNodes() ).children( 'td.description_tooltip' ).popover({
-							container: "body",
+						$( table.fnGetNodes() ).children( 'td.description_tooltip' ).tooltip({
+							container: "table",
 							animated: true,
-							title: "Descripción",
-							content: $(this).text,
+							title: $(this).text,
 							placement: "bottom",
 							trigger: "hover"
 						});
@@ -207,7 +230,7 @@
 				},
 				"bAutoWidth": true,
 				"bProcessing": true,
-				"sAjaxSource": "php/packages.php?command=list&target",
+//				"sAjaxSource": url,
 				"aoColumns": [
 				{ "mData": "id", "bVisible": false },
 				{ 
@@ -228,172 +251,12 @@
 				}
 				]
 			});
-
-	        // Creates a dialog to show installation progress
-	        dialog = Dialog.createProgressDialog(
-	        	"#dialog-box",
-	        	{ 
-	        		title: "Diálogo de progreso",
-	        		message: "ATENCION: No apague el equipo ni recargue la página. "
-	        		+ "Se está realizando la instalación de los paquetes seleccionados. "
-	        		+ "Aguarde a que termine la instalación.",
-	        		closeText: "Cerrar",
-	        		ajaxSettings: {
-	        			type: 'GET',
-	        			dataType: 'json',
-	        			url: '../php/packages.php?command=poll&target=' + $( '#hostname' ).text(),
-	        			cache: false,
-	        			success: function( data, status, jqXHR ) {
-	        			    // Grabs the data for this host
-	        				var data = data[$( '#hostname' ).text()];
-
-	        				// Sets the value for the progress dialog
-	        				dialog.setValue( data.processed );
-
-	        				// If installation process has finished, inform and stop polling.
-	        				// Else, set the current info and continue polling
-	        				if ( data.status == "DONE" ) {
-	        					// Sets the title
-	        					dialog.setTitle( "Instalación Completada \t("+data.processed+"/"+data.toInstall+")" );
-
-	        					// Stops polling server
-	        					dialog.stopProgressQuery();
-
-	        					// A generic message explaining whats going on...
-	        					var message = "El proceso de instalación terminó";
-
-	        					// Program to default. If an error was found, "error_state"
-	        					// will be used instead.
-	        					var state = "ok_state";
-	        					if ( data.errors > 0 ) {
-	        						message += " con <span style='color:red; font-weight: bold;'>errores</span>. Verifique los errores seleccionando las filas de abajo"
-	        						+ " y solicite asistencia al administrador de sistemas";
-	        						state =  "error_state";
-	        					}
-
-	        					// Sets the state
-	        					dialog.setState( state );
-
-	        					// Sets the message
-	        					dialog.setMessage( message + "." );
-	        				} else {
-	        					dialog.setTitle( "Instalando " + data.current + " \t("+data.processed+"/"+data.toInstall+")" );
-	        				}
-
-	        				// Updates installed/processed packages visual information providing the adequate image.
-	        				// In order to optimize we keep track of the last installed/processed package by using
-	        				// a (sigh) global variable.
-	        				for ( var i = lastProcessed; i < data.processed; i++ ) {
-	        					var id = data.installData[i].id;
-	        					var icon = document.getElementById(id);
-	        					icon.src = ( data.installData[i].exitCode == 0 )? progressImages['install_ok'] : progressImages['install_error'];
-	        					icon.alt = data.installData[i].exitCode + "," + data.installData[i].exitString;
-	        				}
-
-	        				// Sets the last processed package index
-	        				lastProcessed = data.processed;
-	        			},
-	        			error: function( jq, status, er){
-	        				console.log(status);
-	        			}
-	        		}
-	        	});
-
-	        // Sets the content for the dialog
-	        dialog.setContent('<br/><table id="dialog-table" cellpadding="0" border="0" cellspacing="0" class="table table-striped table-bordered"></table>');
-
-	        // Creates the datatable
-	        $( '#dialog-table' ).dataTable({
-	        	"sDom": '<"H"Tfr>',
-				"oTableTools": {
-					"sRowSelect": "multi",
-					"aButtons": []
-				},
-				"bJQueryUI": true,
-				"bSort": false,
-				"bPaginate": false,
-				"bFilter": false,
-				"bInfo": false,
-				"sScrollY": "150px",
-				"bDeferRender": true,
-				"bAutoWidth": false,
-				"aoColumns": [
-				{ "sTitle": "Aplicacion" },
-				{
-					"mRender": function(  data, type, full ) {
-						return '<img id="'+full[0]+'" name="'+full[0]+'" width="24" height="24"  src="'+data+'"/>';
-					},
-					"sTitle": "Instalado",
-					"sWidth": "24px",
-					"sClass": "center"
-				}
-				]
-			});
-
-            // Adds a click handler for dialog table rows
-	        $( '#dialog-table tbody' ).delegate( 'tr', 'click', function(){
-	        	// Retrieves the icon img
-	        	var img = $( 'td img', this );
-
-	        	// Retrieves the dialog-table datatable reference
-	        	var table = $( '#dialog-table' ).dataTable();
-
-	        	// If the row is open, close it.
-	        	if ( table.fnIsOpen( this )) {
-	        		table.fnClose( this );
-	        	} else {
-	        		// If no 'alt' property was set for img, do nothing;
-	        		if ( typeof( img.attr('alt') ) === "undefined") return;
-
-	        		// Gets the 'alt' property and split it with ','
-	        		var message = img.attr( 'alt' ).split( ',' );
-	        		console.log(img.attr('alt'));
-	        		var cls = 'errorDetails';
-	        		if ( message[0] == '0' ) cls = 'okDetails';
-
-	        		table.fnOpen( this, getDetailsHTMLTable( message[0], message[1] ), cls );
-	        	}
-			});
-
-            // Binds the submit button
-			$( '#form' ).submit( function() {
-				// Gets selected data
-				var rows = getSelectedRows( "#table_id" );
-				dialog.max = rows.data.length;
-
-				// Clears the dialog table
-				$('#dialog-table').dataTable().fnClearTable();
-
-				// Loads dialog table with data
-				for(var i = 0; i < rows.data.length; i++) {
-					$('#dialog-table').dataTable().fnAddData( [rows.data[i].id, progressImages['install_busy']] );
-				}
-
-				// Gets the query URL
-				var url = "php/packages.php?command=install&target=" + $( '#hostname' ).text() + "&" + rows.url;
-				console.log($('#hostname'));
-				// Builds an AJAX request
-				$.ajax({
-					type: 'POST',
-					cache: false,
-					url: url,
-					beforeSend: function( jqXHR, settings ) {
-						lastProcessed = 0;
-						dialog.startProgressQuery();
-						dialog.setTitle( "Comenzando la Instalación" );
-						dialog.show();
-					},
-					success: function( data, status, jqXHR) {
-						console.log("success: ");
-						//console.log(data);
-						//dialog.stopProgressQuery();
-					},
-					error: function( jq, status, er ) {
-						console.log("error: "+status+" - "+er);
-					},
-				});
-				return false;
-			} );  
+	        var searchLabel = $( '#table_id_filter label' );
+	        var searchField = searchLabel.children( 'input' );
+	        searchLabel.addClass( 'input-group' );
+	        searchField.addClass( 'form-control input-sm' );
+	        searchField.attr( 'placeholder', 'Buscar...' );
+	        $( '#auto' ).click();
 		})
 		</script>
 	</head>
@@ -402,7 +265,7 @@
 		$hostname = gethostbyaddr($_SERVER['REMOTE_ADDR']);
 		echo '<div id="hostname" style="display:none;">' . $hostname . '</div>';
 		?>
-		<div id="myModal" class="modal fade">
+		<div id="myModal" data-backdrop="static" data-keyboard="false" class="modal fade">
 			<div  class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
@@ -413,8 +276,7 @@
 						<p>One fine body&hellip;</p>
 					</div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-						<button type="button" class="btn btn-primary">Save changes</button>
+						<button id="close-dialog-button" type="button" class="btn btn-default" disabled data-dismiss="modal">Cerrar</button>
 					</div>
 				</div><!-- /.modal-content -->
 			</div><!-- /.modal-dialog -->
@@ -434,18 +296,20 @@
 						<a href="#" class="list-group-item" style="padding-right:10px; color:black;">
 							Sistema Operativo
 							<div class="btn-group pull-right">
-								<button id="OSSelect" type="button"  disabled="disabled" class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown">
-								</button>
+								<button id="OSButton" disabled class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown"></button>
 								<ul id="OSOptions" class="dropdown-menu">
+									<li class="divider"></li>
+									<li class="text-center">asdf4</li>
 								</ul>
 							</div>
 						</a>
 						<a href="#" class="list-group-item" style="padding-right:10px; color:black;">
 							Arquitectura
 							<div class="btn-group pull-right">
-								<button id="archSelect" type="button" disabled="disabled" class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown">
+								<button id="archButton" type="button" disabled="disabled" class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown">
 								</button>
 								<ul id="archOptions" class="dropdown-menu">
+									<li class="divider"></li>
 									<li class="text-center">x86_64</li>
 									<li class="text-center">i686</li>
 								</ul>
@@ -481,12 +345,10 @@
 								<span class="glyphicon glyphicon-chevron-up pull-right"></span>
 							</h4>
 						</div>
-						<form id="form">
-							<table id="table_id" class="table table-striped table-bordered" style="table-layout:fixed"></table>
-						</form>
+						<table id="table_id"  class="table table-striped table-bordered" style="table-layout:fixed"></table>
 						<div class="panel-footer">
-							<span class="glyphicon glyphicon-info-sign"> Seleccione los programas que desea instalar y haga click en <i>Instalar</i></span>
-							<button id="install" class="btn btn-mini btn-default pull-right" disabled data-toggle="modal" data-target="#myModal">
+							<span class="glyphicon glyphicon-info-sign"> Seleccione los programas que desea instalar y haga click en </span>
+							<button id="install" href="" onclick="this.setAttribute('href', 'ProgressDialog.html?d='+Date.now());" class="btn btn-mini btn-default " disabled data-toggle="modal" data-target="#myModal">
 								<span class="glyphicon glyphicon-download-alt"></span>
 								Instalar
 							</button>

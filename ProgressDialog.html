@@ -1,0 +1,237 @@
+	<!DOCTYPE html>
+	<html>
+	<head>
+		<style>
+		.errorDetails {
+			color: red;
+		}
+		.okDetails {
+			color: green;
+		}
+		</style>
+		<script>
+		// This host name. Its assumed that this html provides form another, i.e. index.html
+		// with a div that has 'hostname' id, and it contains the hostname.
+		var hostname = $( '#hostname' ).text();
+	
+		// String messages
+		var messages = {
+			es: {
+				install_starting: "Comenzando Instalación",
+				install_installing: "Instalando",
+				install_message: "Actualmente se están instalando los programas listados arriba. No cierre el navegador hasta que la operación se termine.",
+				install_finished: "Instalación completada",
+				install_completed: "El proceso de instalación terminó",
+				install_completed_with_error: " con <span style='color:red; font-weight: bold;'>errores</span>. Verifique los errores seleccionando las filas de abajo"
+				+ " y solicite asistencia al administrador de sistemas",
+				close: "Cerrar"
+			}
+		};
+		
+		// AJAX settings for the poll request
+		var pollAjaxSettings = {
+			type: 'GET',
+			dataType: 'json',
+			cache: false,
+			success: pollingCallbackSuccess,
+			error: pollingCallbackError
+		};
+
+		// AJAX settings for the install request
+		var installAjaxSettings = {
+			type: 'GET',
+			dataType: 'json',
+			cache: false,
+			beforeSend: installCallbackBeforeSend,
+			success: installCallbackSuccess,
+			error: installCallbackError
+		}
+
+		// We need to keep track of processed data
+		var lastProcessed = 0;
+
+		// Images to show for loading, OK, and errors.
+		var progressImages = [];
+		progressImages[ 'install_busy' ] = "images/loading.gif";
+		//progressImages[ 'install_ok' ] = "images/ok.png";
+		//progressImages[ 'install_error' ] = "images/error.png";
+
+		// Returns a skeleton of an URL address that changes upon commands
+		function getCommandURL( command ) {
+			return 'php/packages.php?command=' + command + '&target=' + hostname;
+		}
+
+		// Creates an inner table for showing installation details
+		function getHTMLDetails( errorCode, statusMessage ) {
+			//var table = '<table cellpadding="0" cellspacing="0" border="0" class="table table-striped table-bordered" style="padding-left:1px;">';
+			//var html += '<tr><td class=' + tdClass + '>' + statusMessage + ' [' + errorCode + ']</td></tr>';
+			//html += '</table>';
+			var html = "<td class='details'>"+statusMessage+"</td>";
+			return html;
+		}
+
+		// Callback to be called when the install AJAX is to be sent
+		function installCallbackBeforeSend( jqXHR, settings ) {
+			lastProcessed = 0;
+			noDataTries = 0;
+		}
+
+		// Callback to be called when the install AJAX request success
+		function installCallbackSuccess( data, status, jqXHR ) {
+			updateData( data, lastProcessed );
+		}
+
+		// Callback to be called when the install AJAX request fails
+		function installCallbackError( jqXHR, settings ) {
+
+		}
+
+		// Callback to be called when the poll AJAX success
+		function pollingCallbackSuccess( data, status, jqXHR ) {
+			if ( $.isEmptyObject( data )) {
+				console.log('no data');
+				noDataTries++;
+				if ( noDataTries < 5 ) {
+					setTimeout( function() { $.ajax( pollAjaxSettings );}, 1500 );
+				}
+			} else {
+				console.log("ble");
+				var done = updateData( data, lastProcessed );
+				if (! done) {
+					setTimeout( function() { $.ajax( pollAjaxSettings );}, 1500 );
+				}
+			}
+		}
+
+		// Updates progress processing data from last to data.processed.
+		// If last equals data.processed, we are done
+		function updateData( data, last ) {
+			console.log(data);
+			for ( last; last < data.processed; last++ ) {
+				var id = data.installData[last].id;
+				updateRow( id, data.installData[last] );
+			}
+			var percent = ((last/data.toInstall)*100) + "%";
+			setDialogTitle( messages.es.install_installing + " " + data.current + " \t(" + last + "/" + data.toInstall + ")" );
+			setProgress( percent );
+			lastProcessed = last;
+			var done = (lastProcessed == data.toInstall);
+			if ( done ) {
+				$( '.progress' ).removeClass( 'progress-striped' );
+				setDialogTitle( messages.es.install_finished + " \t(" + data.processed + "/" + data.toInstall + ")");
+
+				var message = messages.es.install_completed;
+				var button_class = "btn-success";
+				if ( data.errors > 0 ) {
+					message += messages.es.install_completed_with_error;
+					button_class = "btn-danger";
+				}
+				message += ".";
+				setDialogMessage( " " + message );
+				$( '#close-dialog-button' ).addClass( button_class );
+				$( '#close-dialog-button' ).removeAttr( "disabled" );
+			}
+			return done;
+		}
+
+		function updateRow( id, data ) {
+			$('#dialog-table').dataTable().fnAddData([id]);
+			var oldImgIcon = $( document.getElementById( id + '-icon' ));
+			oldImgIcon.remove();
+			var cls = (data.exitCode == 0 )? "okDetails glyphicon-ok" : "errorDetails glyphicon-remove";
+			var newImgIcon = '<span id="' 
+			+ id + '-popover"'
+			+ ' data-toggle="popover" data-placement="right"'
+			+ ' data-title="Error: ' + data.exitCode
+			+ '" data-content="'+ data.exitString 
+			+ '" class="glyphicon pull-right ' + cls
+			+ '"></span>';
+			var rowSpan = $( document.getElementById( id )).append( newImgIcon );
+		}
+
+		function setProgress( percent ) {
+			$( '.progress-bar' ).css( 'width', percent );
+		}
+		function setDialogTitle( title ) {
+			$( '.modal-title' ).html( title );
+		}
+		function setDialogMessage( message ) {
+			$( '#dialog-message' ).html( message );
+		}
+
+	    // Callback to be called when the poll AJAX fails
+		function pollingCallbackError( jq, status, er ) {
+
+		}
+
+
+		$( document ).ready(function() {
+			// Creates the datatable that will display individual installation data
+	        var table = $( '#dialog-table' ).dataTable({
+	        	"sDom": '<"H"Tfr>',
+				"oTableTools": {
+					"sRowSelect": "single",
+					"aButtons": [],
+					"sSelectedClass": " "
+				},
+				"bSort": false,
+				"bPaginate": false,
+				"bFilter": false,
+				"bInfo": false,
+				"sScrollY": "150px",
+				"bDeferRender": true,
+				"bAutoWidth": false,
+				"aoColumns": [
+				{
+					"mRender": function(  data, type, full ) {
+						return '<span id="' 
+						+ full[0] + '">'
+						+ full[0] + '<img id="' 
+						+ full[0] + '-icon" width="18" height="18" class="pull-right" src="'
+						+ progressImages['install_busy'] + '"/></span>';
+					},
+					"sTitle": "Programas Procesados",
+				}
+				]
+			});
+
+	        // When the dialog is shown, sets the data and information required
+			$( '#myModal' ).on( 'shown.bs.modal', function() {
+				var rows = getSelectedRows( "#table_id" );
+				var table = $( '#dialog-table' ).dataTable();
+				table.fnClearTable();
+				console.log(rows);
+				for ( var i = 0; i < rows.data.length; i++ ) {
+					//table.fnAddData( [rows.data[i].id ]);
+				}
+				setProgress( "0%" );
+				setDialogTitle( messages.es.install_starting );
+				setDialogMessage( " " + messages.es.install_message );
+				$( '.progress' ).addClass( 'progress-striped' );
+				installAjaxSettings.url = getCommandURL( 'install' ) + "&" + rows.url;
+				pollAjaxSettings.url = getCommandURL( 'poll' );
+				$.ajax( installAjaxSettings );
+				$.ajax( pollAjaxSettings );
+			});        
+	              
+
+			// Adds a click handler for dialog table rows
+	        $( '#dialog-table tbody' ).delegate( 'tr', 'click', function() {
+	        	var img = $( 'td .glyphicon', this );
+	        	img.popover('toggle');
+			});
+
+	        
+		});
+		</script>
+	</head>
+	<body>
+		<div>
+			<div class="progress progress-striped active">
+				<div class="progress-bar"></div>
+			</div>
+			<table id="dialog-table" cellpadding="0" border="0" cellspacing="0" class="table table-striped table-bordered"></table>
+			<span id="dialog-message" class='glyphicon glyphicon-exclamation-sign'> </span>
+		</div>
+	</body>
+	</html>
