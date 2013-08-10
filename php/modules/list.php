@@ -35,15 +35,16 @@
 		* @return Returns an associative array with package data
 		*/
 		public function getPackages() {
-			$di = new RecursiveDirectoryIterator( $this->path, FilesystemIterator::SKIP_DOTS );
-			$it = new  RecursiveIteratorIterator( $di, RecursiveIteratorIterator::SELF_FIRST | RecursiveIteratorIterator::LEAVES_ONLY );
-			$it->setMaxDepth( 1 );
+			$di = new RecursiveDirectoryIterator($this->path, FilesystemIterator::SKIP_DOTS);
+			$it = new  RecursiveIteratorIterator($di, RecursiveIteratorIterator::SELF_FIRST | RecursiveIteratorIterator::LEAVES_ONLY);
+			$it->setMaxDepth(1);
 			$data = array();
-			foreach ( $it as $filename => $file ) {
-				if ( $this->isPackageFile( $file )) {
-					$packageData = $this->getPackageDataFromFile( $file );
-					if ( count( $packageData ) > 0 ) {
-						$data = array_merge( $packageData, $data );
+			foreach ($it as $filename => $file) {
+				if ($this->isPackageFile($file)) {
+					$packageData = $this->getPackageDataFromFile($file);
+					if ( count($packageData) > 0 ) {
+						Utils::log("Package data found " . $this->filter['options']['target'] . ": " . $packageData[0]['id']);
+						$data = array_merge($packageData, $data);
 					}
 				}
 			}
@@ -182,7 +183,7 @@
 
 		// Retrieve found packages
 		$data = $finder->getPackages();
-
+		
 		// Return data back
 		return $data;
 	}
