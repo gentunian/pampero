@@ -25,7 +25,7 @@
 		ul.dropdown-menu > li {
 			padding: 5px;
 		}
-		#table_id tbody > tr > td { 
+		#packagesTable tbody > tr > td { 
 			white-space: nowrap;
 			text-overflow: ellipsis;
 			overflow: hidden;
@@ -39,12 +39,10 @@
 		<script type="text/javascript" charset="utf-8" src="js/jquery-dev.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/jquery.dataTables.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/TableTools.js"></script>
-		<script type="text/javascript" charset="utf-8" src="js/ZeroClipboard.js"></script>
-		<script type="text/javascript" charset="utf-8" src="js/jquery-ui-1.10.3.js"></script>
-		<script type="text/javascript" charset="utf-8" src="js/dialog.js"></script>
-		<script type="text/javascript" charset="utf-8" src="js/bootstrap.min.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/bootstrap.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/DT_bootstrap.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/dataTables.reloadAjax.plugin.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/dataTables.rowSelector.js"></script>
 		<script>
 		(function() {
 			var method;
@@ -67,6 +65,19 @@
 			}
 		}());
 
+		var tableMessages = {
+			"sLoadingRecords": "Cargando -- Por favor espere...",
+			"sProcessing": "Procesando...",
+			"sZeroRecords": "No hay registros.",
+			"sSearch": "",
+			"oPaginate": {
+				"sPrevious": "",
+				"sNext": "",
+				"sLast": "Último",
+				"sFirst": "Primero"
+			}
+		};
+
 		// Tries to autodetect  operating system.
 		function autoDetectOS() {
 			var OSName="Unknown OS";
@@ -78,13 +89,14 @@
 		}
 
 		// Returns a pair of (rows, url) where 'rows' is an array of rowData
-		// and 'url' is the url to send to the server with selected data
-		function getSelectedRows( id ) {
-			var trs = getSelectedTRs( id );
+		// and 'url' is the url to send to the server with selected data from
+		// a specific table id
+		function getSelectedRows( table_id ) {
+			var trs = getSelectedTRs( table_id );
 			var rows = [];
 			var url = "";
 			for( var i = 0; i < trs.length; i++ ) {
-				var rowData = $( '#table_id' ).dataTable().fnGetData( trs[i] );
+				var rowData = $( '#' + table_id ).dataTable().fnGetData( trs[i] );
 				url += "id[]=" + rowData.id + "&";
 				rows.push(rowData);
 			}
@@ -92,28 +104,123 @@
 		}
 
 		// Returns <tr> elements that are selected
-		function getSelectedTRs( id ) {
-			return $( id+" .active");
+		function getSelectedTRs( table_id ) {
+			return $( '#' + table_id + ' tr.active');
 		}
 
-		function loadDataFromUserSelection() {
-			var os = $( '#OSButton>#value' ).text();
-			var arch =  $( '#archButton>#value' ).text();
-			var url = "php/packages.php?command=list&os=" + os + "&arch=" + arch;
-			$( '#table_id' ).dataTable().fnReloadAjax( url );
+		function selectRowsFromGroup( table_id, trs, group ) {
+			setRowsState( table_id, trs, true );
+			for(var i = 0; i < trs.length; i++) {
+				var rowData = $( '#' + table_id ).dataTable().fnGetData( trs[i] );
+				if ( rowData.hasOwnProperty( 'groups' )) {
+					rowData.groups.push(group);
+				} else {
+					rowData.groups = [];
+					rowData.groups.push(group);
+				}
+			}
+		}
+
+		function deselectRowsFromGroup( table_id, trs, group ) {
+			var tt = TableTools.fnGetInstance( table_id );
+			for(var i = 0; i < trs.length; i++) {
+				var rowData = $( '#' + table_id ).dataTable().fnGetData( trs[i] );
+				if ( rowData.hasOwnProperty( 'groups' )) {
+					rowData.groups.pop(group);
+				} 
+				if ( typeof(rowData.groups) === "undefined" || rowData.groups.length == 0 ) {
+					tt.fnDeselect( trs[i] );
+				}
+			}
+		}
+
+		function setRowsState( table_id, trs, selected ) {
+			var tt = TableTools.fnGetInstance( table_id );
+			for(var i = 0; i < trs.length; i++) {
+				if (selected) {
+					tt.fnSelect( trs[i] );
+				}
+				else {
+					tt.fnDeselect( trs[i] );
+				}
+			}
+		}
+
+		function getRows( table_id, prop, values ){
+			var table =  $('#' + table_id).dataTable();
+			var data = table.fnGetData();
+			var result = [];
+			for(var i = 0; i < data.length; i++) {
+				var desc = Object.getOwnPropertyDescriptor(data[i], prop);
+				var value = desc.value;
+				for(var j = 0; j < values.length; j++) {
+					if (values[j] == value) {
+						result.push(table.fnGetNodes(i));
+					}
+				}
+			}
+			return result;
+		}
+
+		function toggleShadeIcon( node ) {
+			var span = $( 'span.glyphicon.pull-right', node );
+			if ( span.hasClass( 'glyphicon-chevron-down' )) {
+				span.removeClass( 'glyphicon-chevron-down' );
+				span.addClass( 'glyphicon-chevron-up' );
+			} else if ( span.hasClass( 'glyphicon-chevron-up' )) {
+				span.removeClass( 'glyphicon-chevron-up' );
+				span.addClass( 'glyphicon-chevron-down' );
+			}
+		}
+
+		function toggleAutodetection() {
+			var icon = $( '#auto div>span.glyphicon' );
+			var value;
+			if (icon.hasClass( "glyphicon-ok" )) {
+				icon.removeClass( "glyphicon-ok" );
+				icon.addClass( "glyphicon-remove" );
+				value = false;
+			} else if ( icon.hasClass( "glyphicon-remove" )) {
+				icon.removeClass( "glyphicon-remove" );
+				icon.addClass( "glyphicon-ok" );
+				value = true;
+			}
+			return value;
+		}
+
+		function isAutodetectionEnabled() {
+			return $( '#auto div>span.glyphicon' ).hasClass( "glyphicon-ok" );
+		}
+
+		function loadData() {
+			var url = "php/packages.php?command=list";
+			if (isAutodetectionEnabled()) {
+				url += "&target=" + $( '#hostname' ).text();
+			} else {
+				var os = $( '#OSButton>#value' ).text();
+				var arch =  $( '#archButton>#value' ).text();
+				url += "&os=" + os + "&arch=" + arch;
+			}
+			$( '#packagesTable' ).dataTable().fnReloadAjax( url );
 		}
 
 		function toProgressDialog() {
 			return "ProgressDialog.html?d=" + Date().value;
 		}
 
+		function beautifySearchField( table_id ) {
+			var searchLabel = $( '#' + table_id + '_filter label' );
+	        var searchField = searchLabel.children( 'input' );
+	        searchLabel.addClass( 'input-group' );
+	        searchField.addClass( 'form-control input-sm' );
+	        searchField.attr( 'placeholder', 'Buscar...' );
+		}
+
 		// DOM ready function
 		$( document ).ready( function() {
 			$( '#auto' ).click( function ( e ){
-				// If we clicked the anchor and it had 'glyphicon-ok' class,
-				// then te current state is unchecked.
-				var unchecked = $( 'div>span.glyphicon', this ).hasClass( "glyphicon-ok" );
-				if ( !unchecked ) {
+				var checked = toggleAutodetection();
+				if ( checked ) {
 					$( 'div>span.glyphicon', this ).removeClass( "glyphicon-remove" );
 					$( 'div>span.glyphicon', this ).addClass( "glyphicon-ok" );
 
@@ -135,7 +242,6 @@
 					$( '#archButton' ).html( "<?php echo htmlentities($arch); ?> ");
 					$( '#OSButton' ).attr( "disabled", "disabled" );
 					$( '#archButton' ).attr( "disabled", "disabled" );
-					$( '#table_id' ).dataTable().fnReloadAjax( 'php/packages.php?command=list&target=' + $( '#hostname' ).text() );
 				} else {
 					$( 'div>span.glyphicon', this ).removeClass( "glyphicon-ok" );
 					$( 'div>span.glyphicon', this ).addClass( "glyphicon-remove" );
@@ -155,40 +261,19 @@
 						var group = $(this).parents( '.btn-group' );
 						var button = $( 'button', group );
 						button.html( "<span id='value'>" + value + "</span><span class='caret'/>" );
-						button.trigger("change");
+						loadData();
 					});
 				}
+				loadData();
 			});
 
 	        // Sets the checked attribute to 'checked' to simulate a checkbox 
 	        $( '#auto' ).attr( "checked", "checked" );
 
-	        // change event will be triggered from li.click() and from #auto.click() event.
-	        // This is the only "cleaner" way to react on change event from a <span> element
-	        $( '#OSButton' ).on('change', loadDataFromUserSelection );
-	        $( '#archButton' ).on('change', loadDataFromUserSelection );
-
-			// Creates the DataTable with the initial url
-			/*
-			var url = "php/packages.php?command=list&"
-			+ "target=" + $( '#hostname' ).text()
-			+ "&arch=" + $( '#archButton' ).text()
-			+ "&os=" + $( '#OSButton' ).text();
-			*/
-			var table = $( '#table_id' ).dataTable({
+	        /**/
+			var packagesTable = $( '#packagesTable' ).dataTable({
 				"sDom": "<'row'<'col-lg-6'T><'col-lg-6'f>r>t<'row-fluid'<'span6'><'span6'p>>",
-				"oLanguage": {
-					"sLoadingRecords": "Cargando -- Por favor espere...",
-					"sProcessing": "Procesando...",
-					"sZeroRecords": "No hay registros.",
-					"sSearch": "",
-					"oPaginate": {
-						"sPrevious": "Anterior",
-						"sNext": "Siguiente",
-						"sLast": "Último",
-						"sFirst": "Primero"
-					}
-				},
+				"oLanguage": tableMessages,
 				"sPaginationType": "bootstrap",
 				"oTableTools": {
 					"sRowSelect": "multi",
@@ -207,7 +292,7 @@
 						$( 'span', nodes ).addClass( 'glyphicon-ok' )
 					},
 					"fnRowDeselected": function( nodes ) {
-						if (TableTools.fnGetInstance( 'table_id' ).fnGetSelected().length == 0) {
+						if (TableTools.fnGetInstance( 'packagesTable' ).fnGetSelected().length == 0) {
 							$( '#install' ).attr( 'disabled', 'disabled' );
 						}
 						$( 'span', nodes ).removeClass( 'glyphicon-ok' )
@@ -218,8 +303,8 @@
 					$.getJSON( sSource, aoData, function ( json ) { 
 						fnCallback({ "aaData": json });
 					}).complete( function(){
-						var table = $( '#table_id' ).dataTable();
-						$( table.fnGetNodes() ).children( 'td.description_tooltip' ).tooltip({
+						//var table = $( '#packagesTable' ).dataTable();
+						$( packagesTable.fnGetNodes() ).children( 'td.description_tooltip' ).tooltip({
 							container: "table",
 							animated: true,
 							title: $(this).text,
@@ -230,7 +315,6 @@
 				},
 				"bAutoWidth": true,
 				"bProcessing": true,
-//				"sAjaxSource": url,
 				"aoColumns": [
 				{ "mData": "id", "bVisible": false },
 				{ 
@@ -251,11 +335,77 @@
 				}
 				]
 			});
-	        var searchLabel = $( '#table_id_filter label' );
-	        var searchField = searchLabel.children( 'input' );
-	        searchLabel.addClass( 'input-group' );
-	        searchField.addClass( 'form-control input-sm' );
-	        searchField.attr( 'placeholder', 'Buscar...' );
+	
+	        var groupsTableSelector = new RowSelector();
+	        groupsTableSelector.selectedClass = "glyphicon-ok";
+	        groupsTableSelector.deselectedClass = "glyphicon-remove";
+	        var groups = new GroupsCollection();
+ 	        var groupsTable = $( '#groupsTable' ).dataTable({
+	        	"sDom": "<'row'<'col-lg-6'T><'col-lg-6'f>><'row'<'col-12'rtp>>",
+	        	"oTableTools": {
+					"sRowSelect": "multi",
+					"aButtons": [
+					{
+						"sExtends": "select_all",
+						"sButtonText": "Todo"
+					},
+					{
+						"sExtends": "select_none",
+						"sButtonText": "Ninguno"
+					}
+					],
+					"fnRowSelected": function( nodes ) {
+						console.log("selected"+nodes);
+						if (!groupsTableSelector.selecting) {
+							groupsTableSelector.nodes = nodes;
+							groupsTableSelector.element = "span";
+							for(var i = 0; i < nodes.length; i++) {
+								var rowData = $( '#groupsTable' ).dataTable().fnGetData( nodes[i] );
+								var trsToUpdate = getRows( "packagesTable", "id", rowData.packages );
+								groupsTableSelector.selectRows( "packagesTable", trsToUpdate );
+							}
+						}
+					},
+					"fnRowDeselected": function( nodes ) {
+						console.log("deselected"+nodes);
+						$( 'span', nodes ).removeClass( 'glyphicon-ok' )
+						for(var i = 0; i < nodes.length; i++) {
+							var rowData = $( '#groupsTable' ).dataTable().fnGetData( nodes[i] );
+							var trsToUpdate = getRows( "packagesTable", "id", rowData.packages );
+							deselectRowsFromGroup( "packagesTable", trsToUpdate, rowData.name );
+						}
+					},
+					"sSelectedClass": "active"
+				},
+				"iDisplayLength": 3,
+				"oLanguage": tableMessages,
+				"bProcessing": true,
+				"fnServerData": function ( sSource, aoData, fnCallback ) {
+					$.getJSON( sSource, aoData, function ( json ) {
+						console.log(json);
+						for( var i = 0; i < json.length; i++ ) {
+							groups.addGroup( json.name, json.packages );
+						}
+						fnCallback({ "aaData": json});
+					});
+				},
+				"sAjaxSource": 'php/packages.php?command=groups&output=jsonplain',
+				"aoColumns": [
+				{ "mData": "packages", "bVisible": false },
+				{ 
+					"mRender": function( data, type, full ) {
+						return '<span class="glyphicon">  '+data+'</span>';
+					},
+					"mData": "name",
+					"sTitle": "Grupo"
+				},
+				{ "mData": "description", "sTitle": "Descripción"}
+				]
+	        });
+
+	        beautifySearchField( "packagesTable" );
+	        beautifySearchField( "groupsTable" );
+	       
 	        $( '#auto' ).click();
 		})
 		</script>
@@ -285,69 +435,81 @@
 		<div class="container">
 			<div class="row">
 				<div class="col-lg-4">
-					<div class="list-group">
-						<a href="#" class="list-group-item active">
-							<h4 class="panel-title" data-toggle="collapse" data-target="#demo">
-								<span class="glyphicon glyphicon-info-sign"> Información de su Sistema</span>
-								<span class="glyphicon glyphicon-chevron-up pull-right"></span>
-							</h4>
-							<p id="demo" class="list-group-item-text collapse" data-toggle="collapse" data-target="#demo">Puede evitar la autodetección destildando la opción <i>Usar Autodetección</i>.</p>
-						</a>
-						<a href="#" class="list-group-item" style="padding-right:10px; color:black;">
-							Sistema Operativo
-							<div class="btn-group pull-right">
-								<button id="OSButton" disabled class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown"></button>
-								<ul id="OSOptions" class="dropdown-menu">
-									<li class="divider"></li>
-									<li class="text-center">asdf4</li>
-								</ul>
+					<div class="row">
+						<div class="panel panel-primary">
+							<div class="panel-heading" data-toggle="collapse" data-target="#sysinfo" onclick="toggleShadeIcon(this);">
+								<h4 class="panel-title"  >
+									<span class="glyphicon glyphicon-list-alt"> Información de su Sistema</span>
+									<span class="glyphicon glyphicon-chevron-down pull-right"></span>
+								</h4>
 							</div>
-						</a>
-						<a href="#" class="list-group-item" style="padding-right:10px; color:black;">
-							Arquitectura
-							<div class="btn-group pull-right">
-								<button id="archButton" type="button" disabled="disabled" class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown">
-								</button>
-								<ul id="archOptions" class="dropdown-menu">
-									<li class="divider"></li>
-									<li class="text-center">x86_64</li>
-									<li class="text-center">i686</li>
-								</ul>
+							<div id="sysinfo" class="list-group collapse in">
+								<a href="#" class="list-group-item" style="padding-right:10px; color:black;">
+									Sistema Operativo
+									<div class="btn-group pull-right">
+										<button id="OSButton" disabled class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown"></button>
+										<ul id="OSOptions" class="dropdown-menu">
+											<li class="divider"></li>
+											<li class="text-center">asdf4</li>
+										</ul>
+									</div>
+								</a>
+								<a href="#" class="list-group-item" style="padding-right:10px; color:black;">
+									Arquitectura
+									<div class="btn-group pull-right">
+										<button id="archButton" type="button" disabled="disabled" class="btn btn-mini btn-info dropdown-toggle" data-toggle="dropdown">
+										</button>
+										<ul id="archOptions" class="dropdown-menu">
+											<li class="divider"></li>
+											<li class="text-center">x86_64</li>
+											<li class="text-center">i686</li>
+										</ul>
+									</div>
+								</a>
+								<a id="auto" href="#" class="list-group-item" style="padding-right:10px; color:black;">
+									<!--<input id="auto" name="auto" type="checkbox"><span> Usar Autodetección</span>-->
+									<span>Usar autodetección</span>
+									<div class="btn-group pull-right">
+										<span class="glyphicon"></span>
+									</div>
+								</a>
 							</div>
-						</a>
-						<a id="auto" href="#" class="list-group-item" style="padding-right:10px; color:black;">
-							<!--<input id="auto" name="auto" type="checkbox"><span> Usar Autodetección</span>-->
-							<span>Usar autodetección</span>
-							<div class="btn-group pull-right">
-								<span class="glyphicon"></span>
+							<div class="panel-footer">
+								<span class="glyphicon glyphicon-info-sign" style="font-size:10px;"> Puede evitar la autodetección destildando la opción <i>Usar Autodetección</i>.</span>
 							</div>
-						</a>
+						</div>
+					</div>
+					<div class="row">
+						<div class="panel panel-primary">
+							<div class="panel-heading">
+								<h4 class="panel-title" data-toggle="collapse" data-target="#groupsTable-div" onclick="toggleShadeIcon(this);">
+									<span class="glyphicon glyphicon-list-alt"> Grupos predefinidos</span>
+									<span class="glyphicon glyphicon-chevron-down pull-right"></span>
+								</h4>
+							</div>
+							<!--<span class="glyphicon glyphicon-warning-sign"> Aún no hay grupos disponibles para instalar.</span>-->
+							<div id="groupsTable-div" class="collapse in">
+								<table id="groupsTable" class="table table-striped table-bordered"></table>
+							</div>
+							<div class="panel-footer">
+								<span class="glyphicon glyphicon-info-sign" style="font-size:10px;"> Seleccione los grupos predefinidos que desea instalar.</span>
+							</div>
+						</div>
 					</div>
 				</div>
 				<div class="col-lg-8">
 					<div class="panel panel-primary">
 						<div class="panel-heading">
-							<h4 class="panel-title" >
-								<span class="glyphicon glyphicon-list-alt"> Grupos</span>
-								<span class="glyphicon glyphicon-chevron-up pull-right"></span>
-							</h4>
-						</div>
-						<span class="glyphicon glyphicon-warning-sign"> Aún no hay grupos disponibles para instalar.</span>
-					</div>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-lg-12">
-					<div class="panel panel-primary">
-						<div class="panel-heading">
-							<h4 class="panel-title" style="height:100%;" >
+							<h4 class="panel-title" data-toggle="collapse" data-target="#packagesTable-div" onclick="toggleShadeIcon(this);">
 								<span class="glyphicon glyphicon-list"> Programas disponibles</span>
-								<span class="glyphicon glyphicon-chevron-up pull-right"></span>
+								<span class="glyphicon glyphicon-chevron-down pull-right"></span>
 							</h4>
 						</div>
-						<table id="table_id"  class="table table-striped table-bordered" style="table-layout:fixed"></table>
+						<div id="packagesTable-div" class="collapse in">
+							<table id="packagesTable"  class="table table-striped table-bordered" style="table-layout:fixed"></table>
+						</div>
 						<div class="panel-footer">
-							<span class="glyphicon glyphicon-info-sign"> Seleccione los programas que desea instalar y haga click en </span>
+							<!--<span class="glyphicon glyphicon-info-sign"> Seleccione los programas que desea instalar y haga click en </span>-->
 							<button id="install" href="" onclick="this.setAttribute('href', 'ProgressDialog.html?d='+Date.now());" class="btn btn-mini btn-default " disabled data-toggle="modal" data-target="#myModal">
 								<span class="glyphicon glyphicon-download-alt"></span>
 								Instalar
@@ -357,5 +519,6 @@
 				</div>
 			</div>
 		</div>
+		
 	</body>
 	</html>
