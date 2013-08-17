@@ -21,6 +21,17 @@ function RowSelector() {
 }
 
 function GroupsCollection() {
+	function Group( name, items ) {
+		if ( typeof( name ) === "undefined" ) name = "NoName";
+		if ( typeof( items ) === "undefined" ) items = [];
+		var group = {
+			name: name,
+			items: items,
+			selectedItems: []
+		};
+		return group;
+	}
+
 	var o = {
 		groups: {},
 		getGroups: function( item ) {
@@ -34,11 +45,32 @@ function GroupsCollection() {
 			}
 			return groups;
 		},
+		selectItem: function( item ) {
+			var groups = this.getGroups( item );
+			for( var i = 0; i < groups.length; i++ ) {
+				var g = this.groups[groups[i]];
+				g.selectedItems.push( item );
+			}
+		},
+		deselectItem: function( item ) {
+			var groups = this.getGroups( item );
+			for( var i = 0; i < groups.length; i++ ) {
+				var g = this.groups[groups[i]];
+				var index = groups.indexOf( item );
+				g.selectedItems.splice( index, 1 );
+			}
+		},
 		getItems: function( groupName ) {
-			return this.groups[groupName];
+			var g = this.groups[groupName];
+			return g.items;
+		},
+		getSelectedItemsInGroup: function( groupName ) {
+			var g = this.groups[ groupName ];
+			return g.selectItems;
 		},
 		addGroup: function( groupName, items ) {
-			this.groups[groupName] = items;
+			var g = new this.Group( groupName, items );
+			this.groups[ groupName ] = g;
 		}
 	}
 	return o;
