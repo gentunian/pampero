@@ -71,7 +71,6 @@
 			foreach ($result as $target => $data) {
 				if ( $outputType == "console") {
 					$output .= sprintf("%s:\n%s\n", $target, str_repeat("-", strlen($target)));
-				// TODO: Is it necessary to call toString()?
 					$output .= $data->toString();
 					$output .= "\n";
 				} else if ($outputType == "jsonplain") {
@@ -80,7 +79,7 @@
 			}
 		    // If "jsonplain" output was set, remove las comma and wrap it up with enclosing brackets
 			if ($outputType == "jsonplain") {
-				$output = "{" . substr($output, 0, -1) . "}";
+				$output = "{" . rtrim($output, ",") . "}";
 			}
 		}
 		return $output;
