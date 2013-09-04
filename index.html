@@ -1,3 +1,16 @@
+<?php
+	require_once('admin/config.php');
+	global $os, $arch;
+	$hostname = gethostbyaddr($_SERVER['REMOTE_ADDR']);
+	$machine = new Machine($hostname);
+	if ($machine != NULL) {
+		$os = $machine->getSystemInfo()->getOSName();
+		$arch = $machine->getSystemInfo()->getOSArchitecture();
+	} else {
+		$os = OS_UNKNOWN;
+		$arch = OS_UNKNOWN;
+	}
+?>
 <!DOCTYPE html>
 	<html>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -33,16 +46,16 @@
 		</style>
 
 		<link rel="stylesheet" href="css/bootstrap.css">
-		<link rel="stylesheet" href="css/DT_bootstrap.css">
 		<link rel="stylesheet" href="css/bootstrap-glyphicons.css">
-
+		<link rel="stylesheet" href="css/DT_bootstrap.css">
+		
 		<script type="text/javascript" charset="utf-8" src="js/jquery-dev.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/jquery.dataTables.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/TableTools.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/bootstrap.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/DT_bootstrap.js"></script>
 		<script type="text/javascript" charset="utf-8" src="js/dataTables.reloadAjax.plugin.js"></script>
-		<script type="text/javascript" charset="utf-8" src="js/dataTables.rowSelector.js"></script>
+		<script type="text/javascript" charset="utf-8" src="js/dataTables.groupsSelection.js"></script>
 		<script>
 		(function() {
 			var method;
@@ -223,21 +236,6 @@
 				if ( checked ) {
 					$( 'div>span.glyphicon', this ).removeClass( "glyphicon-remove" );
 					$( 'div>span.glyphicon', this ).addClass( "glyphicon-ok" );
-
-					<?php /* --- PHP code --- */
- 					require_once('admin/config.php');
-					global $os, $arch;
-					$hostname = gethostbyaddr($_SERVER['REMOTE_ADDR']);
-					$machine = new Machine($hostname);
-					if ($machine != NULL) {
-						$os = $machine->getSystemInfo()->getOSName();
-						$arch = $machine->getSystemInfo()->getOSArchitecture();
-					} else {
-						$os = OS_UNKNOWN;
-						$arch = OS_UNKNOWN;
-					}
-					?>/* -- End PHP code --- */
-
 					$( '#OSButton' ).html( "<?php echo htmlentities($os); ?>" );
 					$( '#archButton' ).html( "<?php echo htmlentities($arch); ?> ");
 					$( '#OSButton' ).attr( "disabled", "disabled" );
@@ -256,7 +254,7 @@
 					archButton.html( "Seleccione.. <span class='caret'/>" );
 					archButton.trigger( "change" );
 
-					$( '.dropdown-menu li').click( function ( e ) {
+					$( '#sysinfo .dropdown-menu li').click( function ( e ) {
 						var value = $(this).text();
 						var group = $(this).parents( '.btn-group' );
 						var button = $( 'button', group );
@@ -288,14 +286,33 @@
 					}
 					],
 					"fnRowSelected": function( nodes ) {
-						$( '#install' ).removeAttr( 'disabled' );
-						$( 'span', nodes ).addClass( 'glyphicon-ok' )
+						$( '#installGroup button' ).removeAttr( 'disabled' );
+						$( '.glyphicon', nodes ).addClass( 'glyphicon-ok' );
+
+						if (!groups.isSelecting() ) {
+							var table = $( '#packagesTable' ).dataTable();
+							
+							for (var i = 0; i < nodes.length; i++ ) {
+								var rowData = table.fnGetData( nodes[i] );
+								var itemName = rowData.id;
+								groups.selectItem( itemName );
+							}
+						}
 					},
 					"fnRowDeselected": function( nodes ) {
 						if (TableTools.fnGetInstance( 'packagesTable' ).fnGetSelected().length == 0) {
-							$( '#install' ).attr( 'disabled', 'disabled' );
+							$( '#installGroup button' ).attr( 'disabled', 'disabled' );
 						}
-						$( 'span', nodes ).removeClass( 'glyphicon-ok' )
+						$( '.glyphicon', nodes ).removeClass( 'glyphicon-ok' );
+						if (!groups.isSelecting() ) {
+							var table = $( '#packagesTable' ).dataTable();
+							
+							for (var i = 0; i < nodes.length; i++ ) {
+								var rowData = table.fnGetData( nodes[i] );
+								var itemName = rowData.id;
+								groups.deselectItem( itemName );
+							}
+						}
 					},
 					"sSelectedClass": "active"
 				},
@@ -335,11 +352,12 @@
 				}
 				]
 			});
-	
-	        var groupsTableSelector = new RowSelector();
-	        groupsTableSelector.selectedClass = "glyphicon-ok";
-	        groupsTableSelector.deselectedClass = "glyphicon-remove";
-	        var groups = new GroupsCollection();
+
+
+	        var groups = new Groups();
+	        groups.itemsTable = "packagesTable";
+	        groups.groupsTable = "groupsTable";
+
  	        var groupsTable = $( '#groupsTable' ).dataTable({
 	        	"sDom": "<'row'<'col-lg-6'T><'col-lg-6'f>><'row'<'col-12'rtp>>",
 	        	"oTableTools": {
@@ -355,24 +373,29 @@
 					}
 					],
 					"fnRowSelected": function( nodes ) {
-						console.log("selected"+nodes);
-						if (!groupsTableSelector.selecting) {
-							groupsTableSelector.nodes = nodes;
-							groupsTableSelector.element = "span";
-							for(var i = 0; i < nodes.length; i++) {
-								var rowData = $( '#groupsTable' ).dataTable().fnGetData( nodes[i] );
-								var trsToUpdate = getRows( "packagesTable", "id", rowData.packages );
-								groupsTableSelector.selectRows( "packagesTable", trsToUpdate );
+						$( '.glyphicon', nodes ).addClass( 'glyphicon-ok' );
+
+						if (!groups.isSelecting() ) {
+							var table = $( '#groupsTable' ).dataTable();
+
+							for (var i = 0; i < nodes.length; i++ ) {
+								var rowData = table.fnGetData( nodes[i] );
+								var groupName = rowData.name;
+								groups.select( groupName );
 							}
 						}
 					},
 					"fnRowDeselected": function( nodes ) {
-						console.log("deselected"+nodes);
-						$( 'span', nodes ).removeClass( 'glyphicon-ok' )
-						for(var i = 0; i < nodes.length; i++) {
-							var rowData = $( '#groupsTable' ).dataTable().fnGetData( nodes[i] );
-							var trsToUpdate = getRows( "packagesTable", "id", rowData.packages );
-							deselectRowsFromGroup( "packagesTable", trsToUpdate, rowData.name );
+						$( '.glyphicon', nodes ).removeClass( 'glyphicon-ok' );
+
+						if (! groups.isSelecting() ) {
+							var table = $( '#groupsTable' ).dataTable();
+
+							for (var i = 0; i < nodes.length; i++ ) {
+								var rowData = table.fnGetData( nodes[i] );
+								var groupName = rowData.name;
+								groups.deselect( groupName );
+							}
 						}
 					},
 					"sSelectedClass": "active"
@@ -384,7 +407,7 @@
 					$.getJSON( sSource, aoData, function ( json ) {
 						console.log(json);
 						for( var i = 0; i < json.length; i++ ) {
-							groups.addGroup( json.name, json.packages );
+							groups.add( json[i].name, json[i].packages );
 						}
 						fnCallback({ "aaData": json});
 					});
@@ -439,7 +462,7 @@
 						<div class="panel panel-primary">
 							<div class="panel-heading" data-toggle="collapse" data-target="#sysinfo" onclick="toggleShadeIcon(this);">
 								<h4 class="panel-title"  >
-									<span class="glyphicon glyphicon-list-alt"> Información de su Sistema</span>
+									<span class="glyphicon glyphicon-info-sign"> Información de su Sistema</span>
 									<span class="glyphicon glyphicon-chevron-down pull-right"></span>
 								</h4>
 							</div>
@@ -501,7 +524,7 @@
 					<div class="panel panel-primary">
 						<div class="panel-heading">
 							<h4 class="panel-title" data-toggle="collapse" data-target="#packagesTable-div" onclick="toggleShadeIcon(this);">
-								<span class="glyphicon glyphicon-list"> Programas disponibles</span>
+								<span class="glyphicon glyphicon-th-large"> Programas disponibles</span>
 								<span class="glyphicon glyphicon-chevron-down pull-right"></span>
 							</h4>
 						</div>
@@ -509,11 +532,18 @@
 							<table id="packagesTable"  class="table table-striped table-bordered" style="table-layout:fixed"></table>
 						</div>
 						<div class="panel-footer">
-							<!--<span class="glyphicon glyphicon-info-sign"> Seleccione los programas que desea instalar y haga click en </span>-->
-							<button id="install" href="" onclick="this.setAttribute('href', 'ProgressDialog.html?d='+Date.now());" class="btn btn-mini btn-default " disabled data-toggle="modal" data-target="#myModal">
-								<span class="glyphicon glyphicon-download-alt"></span>
-								Instalar
-							</button>
+							<div class="btn-group" id="installGroup">
+								<button id="install" href="" onclick="this.setAttribute('href', 'ProgressDialog.html?d='+Date.now());" class="btn btn-mini btn-default " disabled data-toggle="modal" data-target="#myModal">
+									<span class="glyphicon glyphicon-download-alt"></span>
+									Instalar
+								</button>
+								<button id="installAlt" type="button" class="btn btn-mini btn-default dropdown-toggle" data-toggle="dropdown" disabled>
+									<span class="caret"></span>
+								</button>
+								<ul class="dropdown-menu" role="menu">
+									<li><span class="glyphicon glyphicon-download"></span> Instalar en...</li>
+								</ul>
+							</div>
 						</div>
 					</div>
 				</div>
