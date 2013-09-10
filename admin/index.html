@@ -1,407 +1,346 @@
- <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-  <html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
-    <meta name="HandheldFriendly" content="true" />
-    <title>Formulario</title>
-    <link href="css/formCss.css?3.1.548" rel="stylesheet" type="text/css" />
-    <link type="text/css" rel="stylesheet" href="css/pastel.css?3.1.548" />
-    <link type="text/css" media="print" rel="stylesheet" href="css/printForm.css?3.1.548" />
+	<!DOCTYPE html>
+	<html>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<head>
+		<style>
+		#packagesTable tbody > tr > td { 
+			white-space: nowrap;
+			text-overflow: ellipsis;
+			overflow: hidden;
+		}
 
-    <!-- <link type="text/css" rel="stylesheet" href="../../css/themes/smoothness-v1/smoothness-v1.css" /> -->
+		</style>
+		<link rel="stylesheet" href="../css/bootstrap.css">
+		<link rel="stylesheet" href="../css/bootstrap-glyphicons.css">
+		<link rel="stylesheet" href="../css/DT_bootstrap.css">
 
-    <script type="text/javascript" src="../js/jquery.js"></script>
-    <script type="text/javascript" src="../js/jquery.form.js"></script>
-    <script type="text/javascript" src="../js/jquery-ui-1.10.3.js"></script>
-    <script type="text/javascript">
-    $.noConflict();
-    </script>
-    <style type="text/css">
-    .form-label{
-      width:150px !important;
-    }
-    .form-label-left{
-      width:150px !important;
-    }
-    .form-line{
-      padding-top:10px;
-      padding-bottom:10px;
-    }
-    .form-label-right{
-      width:150px !important;
-    }
-    body, html{
-      margin:0;
-      padding:0;
-      background:url("images/noise.png") rgb(207, 204, 200);
-    }
+		<script type="text/javascript" charset="utf-8" src="../js/jquery-dev.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/jquery.dataTables.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/TableTools.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/bootstrap.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/DT_bootstrap.js"></script>
+		<script>
+		var gdata;
 
-    .form-all{
-      margin:0px auto;
-      padding-top:0px;
-      width:850px;
-      background:url("images/noise.png") rgb(207, 204, 200);
-      color:#120000 !important;
-      font-family:'Tahoma';
-      font-size:13px;
-    }
-    .form-radio-item label, .form-checkbox-item label, .form-grading-label, .form-header{
-      color:#120000;
-    }
-    .progress { position:relative; width:400px; border: 1px solid #ddd; padding: 1px; border-radius: 3px; }
-    .bar { background-color: #B4F5B4; width:0%; height:20px; border-radius: 3px; }
-    .percent { position:absolute; display:inline-block; top:3px; left:48%; }
-    .hide {
-      display: none;
-    }
-    </style>
-    <link type="text/css" rel="stylesheet" href="css/form-submit-button-simple_black.css?3.1.548"/>
-    <script src="js/jotform.js?3.1.548" type="text/javascript"></script>
-    <script type="text/javascript">
-    function jotFormInit() {
-      JotForm.description('appSelect', 'Seleccione una de las aplicaciones para agregar un nuevo instalador, o cree una aplicación nueva utilizando el boton \"Nuevo\".');
-      $('appKey').hint('NombreDelPrograma');
-      JotForm.description('appKey', 'Una clave única, preferentemente el nombre del programa a instalar sin espacios, ya que será usada la clave como nombre de un directorio.');
-      $('appName').hint('Nombre del programa');
-      JotForm.description('appName', 'Nombre descriptivo del programa que se instala.');
-      JotForm.setCustomHint( 'appDescription', 'Descripción del programa.' );
-      JotForm.description('appDescription', 'Una breve descripción acerca del programa a instalar.');
-      JotForm.description('appOS', 'Liste los sistemas operativos disponibles  del instalador.');
-      JotForm.description('appArch', 'Liste las arquitecturas disponibles del instalador.');
-      $('appVersion').hint('1.0.2');
-      JotForm.description('appVersion', 'La versión del programa a instalar.');
-      $('appArgs').hint('/S /norestart');
-      JotForm.description('appArgs', 'Los parámetros a pasar al instalador, por ejemplo: instalador.exe /S /norestart');
-      JotForm.description('appFile', 'El instalador que se va a agregar.');
-    }
+		function getForm( data ) {
+			if ( typeof( data ) === "undefined" ) { 
+				data = {
+					name: "",
+					version: "",
+					description: "",
+					installerArgs: "",
+					os: [],
+					arch: []
+				};
+			}
+			gdata = data;
+			var html = "<form class='form-horizontal' role='form'>";
+			// Name
+			html += "<div class='form-group'>";
+			html += "<label for='inputId' class='col-lg-3 control-label'>Nombre</label>";
+			html += "<div class='col-lg-9'>";
+			html += "<input value='" + data.name + "' type='text' class='form-control' id='inputId' placeholder='Nombre del programa sin espacios ni puntuaciones'>";
+			html += "</div>";
+			html += "</div>";
+			// Description
+			html += "<div class='form-group'>";
+			html += "<label for='inputDescription' class='col-lg-3 control-label'>Descripción</label>";
+			html += "<div class='col-lg-9'>";
+			html += "<input value='" + data.description + "' type='text' class='form-control' id='inputDescription' placeholder='Descripción del programa.'>";
+			html += "</div>";
+			html += "</div>";
+			// TABS
+			html += "<div class='form-group'>";
+			html += "<ul class='nav nav-tabs' id='myTab'>";
+			//html += "<li class='active'><a href='#inst1' data-toggle='tab'>Instalador 1</a></li>";
+			html += "<li><a class='add-tab' href='#newinst'><span class='glyphicon glyphicon-plus-sign'></span></a></li>";
+			html += "</ul></div>";
+			// CONTENTS
+			html += "<div class='tab-content'>"
+			//html += "<div class='tab-pane active' id='inst1'>"
+			// Operating Systems
 
-    JotForm.init( jotFormInit );
+			// Architecture
+			
+			// Version
+			
+			// Arguments
+			
+			// File upload
+			
+			//html += "</div>";
+			html += "</div>";
+			// Submit
+			html += "<div class='form-group'>";
+			html += "<div class='col-offset-3 col-lg-9'>";
+			html += "<button type='submit' class='btn btn-primary'>Enviar</button>";
+			html += "</div>";
+			html += "</div>";
 
-    var packages = {};
-    var bar;
-    var percent;
+			html += "</form>";
+			return html;
+		}
 
-    jQuery.fn.scrollView = function() {
-      return this.each( function() {
-        jQuery( 'body, html' ).animate({
-          scrollTop: jQuery( this ).offset().top,
-        }, 750);
-      })
-    }
-    
-    function ajaxPackagesListRequest() {
-      jQuery.ajax({
-        url: '../php/packages.php?command=list&json=1',
-        success: function( data, statusText, jqXHR ) {
-          var aaData = "{ \"aaData\": "+data.replace(/<pre>|<\/pre>/g, "")+"}";
-          console.log( aaData);
-          loadPackagesListOnSelect( 'appSelect', JSON.parse(aaData).aaData );
-        }
-      });
-    }
+		function getFormOSSection( data ) {
+			var html = "";
+			html += "<div class='form-group'>";
+			html += "<label class='col-lg-3 control-label'>Sistema Operativo</label>";
+			html += "<div class='col-lg-9'>";
+			// Windows 7
+			html += "<div class='checkbox'>";
+			html += "<label>";
+			html += "<input type='checkbox' value='' " + (( data.os.indexOf( 'Windows 7' ) != -1 )? "checked": "") + ">";
+			html += "Windows 7";
+			html += "</label>";
+			html += "</div>";
+			// Windows XP
+			html += "<div class='checkbox'>";
+			html += "<label>";
+			html += "<input type='checkbox' value='' " + (( data.os.indexOf( 'Windows XP' ) != -1 )? "checked": "") + ">";
+			html += "Windows XP";
+			html += "</label>";
+			html += "</div>";
+			// Windows 8
+			html += "<div class='checkbox'>";
+			html += "<label>";
+			html += "<input type='checkbox' value='' " + (( data.os.indexOf( 'Windows 8' ) != -1 )? "checked": "") + ">";
+			html += "Windows 8";
+			html += "</label>";
+			html += "</div>";
+			html += "</div>";
+			html += "</div>";
+			return html;
+		}
 
-    function loadPackagesListOnSelect( selectId, packagesList ) {
-      var select = document.getElementById( selectId );
-      select.options.length = 1;
-      for(var i = 0; i < packagesList.length; i++) {
-        var option = document.createElement( 'option' );        
-        option.text = packagesList[ i ].id;
-        option.value = packagesList[ i ].id;
-        select.appendChild( option );
-        packages[ packagesList[ i ].id ] = packagesList[ i ];
-      }
-    }
-    
-    function resetForm( frm ) {
-      $( frm ).reset();
-      $$(".form-line-error").each(function (tmp) {
-        tmp.removeClassName("form-line-error");
-      });
-      $$(".form-error-message", ".form-button-error").each(function (tmp) {
-        tmp.remove();
-      });
-      $$(".form-textarea-limit-indicator > span").each(function (tmp) {
-        var raw = tmp.innerHTML;
-        tmp.innerHTML = raw.replace(raw.substring(0, raw.indexOf("/")), "0");
-      });
-      $$("span[id^=grade_point_]").each(function (tmp) {
-        tmp.innerHTML = 0;
-      });
-      $$(".form-grading-error").each(function (tmp) {
-        tmp.innerHTML = "";
-      });
-      var percentVal = '0%';
-      bar.width(percentVal)
-      percent.html(percentVal);
-    }
+		function getFormArchSection( data ) {
+			var html = "";
+			html += "<div class='form-group'>"
+			html += "<label for='arch' class='control-label col-lg-3'>Arquitectura</label>";
+			html += "<div class='col-lg-9'>"
+			html += "<select id='arch' class='form-control'>";
+			html += "<option>i686</option>";
+			html += "<option>x86_64</option>"
+			html += "</select>";
+			html += "</div>";
+			html += "</div>";
+			return html;
+		}
 
-    function newForm() {
-      resetForm( 'form2' );
-      jQuery( '#Form2Header' ).text( 'Agregar un nuevo paquete.' );
-      jQuery( '#appKey' ).value = '';
-      jQuery( '#appKey' ).removeAttr( 'disabled' );
-      jQuery( '#appName' ).focus();
-      jQuery( '#appName' ).value = '';
-      jQuery( '#appName' ).removeAttr('disabled' );
-      $('appName').hint(  'Nombre del programa' );
-      jQuery( '#appDescription' ).removeAttr( 'disabled' );
-      $( 'appDescription' ).value =  '';
-      JotForm.setCustomHint( 'appDescription', 'Descripción del programa' );
-      jQuery( '#Form2Header' ).scrollView();
-      jQuery( 'form .form-all').animate({backgroundColor: "#F0C78D"}, 1500 );
-    }
+		function getFormVersionSection( data ) {
+			var html = "";
+			html += "<div class='form-group'>";
+			html += "<label for='inputVersion' class='col-lg-3 control-label'>Version</label>";
+			html += "<div class='col-lg-9'>";
+			html += "<input value='" + data.version + "' type='text' class='form-control' id='inputVersion' placeholder='Version del programa, ejemplo: 1.2.2'/>";
+			html += "</div>";
+			html += "</div>";
+			return html;
+		}
 
-    function updateForm( package ) {
-      resetForm( 'form2' );
-      jQuery( '#Form2Header' ).text( 'Agregar un nuevo instalador.' );
-      //jQuery( '#appKey' ).value = package.id;
-      //jQuery( '#appKey' ).attr( 'disabled', 'disabled' );
-      //$('appKey').hint(  package.id );
-      $( 'appName' ).value = package.name;
-      jQuery( '#appName' ).attr('disabled', 'disabled');
-      //$('appName').hint(  package.name );
-      //jQuery( '#appDescription' ).attr('disabled', 'disabled');
-      $( 'appDescription' ).value =  package.description;
-      JotForm.setCustomHint( 'appDescription', 'Descripción del programa' );
-      jQuery( '#exeSpecs' ).scrollView();
-      jQuery( 'form .form-all' ).animate({ backgroundColor: "url(\"images/noise.png\") rgb(207, 204, 200);" }, 1500 );
-      jQuery( '#exeSpecs' ).animate({ backgroundColor: "#F0C78D" }, 1500 );
-    }
+		function getFormInstallerArgsSection( data ) {
+			var html = "";
+			html += "<div class='form-group'>";
+			html += "<label for='inputArguments' class='col-lg-3 control-label'>Argumentos</label>";
+			html += "<div class='col-lg-9'>";
+			html += "<input value='" + data.installerArgs + "' type='text' class='form-control' id='inputArguments' placeholder='Ejemplo: /S /norestart'/>";
+			html += "</div>";
+			html += "</div>";
+			return html;
+		}
 
-    function showForm( formId ) {
-      jQuery( formId ).show();
-    }
+		function getFormFileUploadSection( data ) {
+			var html = "";
+			html += "<div class='form-group'>"
+			html += "<label for='file' class='col-lg-3 control-label'>Archivo</label>";
+			html += "<div class='col-lg-9'>";
+			html += "<input type='file' id='file'/>";
+			html += "</div>";
+			html += "</div>";
+			return html;
+		}
 
-    function beforeSubmitForm2( formData, jqForm, options ) {
-      var form = jqForm[0];
-      var id = jQuery.trim( form.appName.value );
-      for(var i = 0; i < formData.length; i++) {
-        if ( formData[ i ].name === "appKey" ) {
-          formData[ i ].value = id.split(" ").join("");
-          break;
-        }
-      }
-      // adds appName because it won't be included
-      // when a field is disabled.
-      formData.push(form.appName);
-      var percentVal = '0%';
-      bar.width(percentVal)
-      percent.html(percentVal);
-      console.log(formData);
-      return true;
-    }
+		$(document).ready( function() { 
+			var packagesTable = $( '#packagesTable' ).dataTable({
+				"sDom": "<'row'<'col-lg-6'T><'col-lg-6'f>r>t<'row'<'col-lg-6'><'col-lg-6'p>>",
+				"sPaginationType": "bootstrap",
+				"oTableTools": {
+					"sRowSelect": "single",
+					"aButtons": [
+					{
+						"sExtends": "text",
+						"sButtonText": "Nuevo",
+						"fnInit": function ( nButton, oConfig ) {
+							var button = $( nButton );
+							button.attr( 'data-toggle', 'modal' );
+							button.attr( 'href', '#myModal' );
+							button.addClass( 'btn' );
+							button.addClass( 'btn-primary' );
+						},
+						"fnClick": function ( nButton, oConfig, oFlash ) {
+							$( '.modal-body' ).html( getForm() );
+							$( '.modal-title' ).html( 'Nuevo Software' );
+						},
+						"fnSelect": function ( nButton, oConfig, nRow ) {
+							// row selected
+						}
+					},
+					{
+						"sExtends": "text",
+						"sButtonText": "Eliminar",
+						"fnInit": function ( nButton, oConfig ) {
+							$( nButton ).attr( 'disabled', 'true');
+						},
+						"fnClick": function ( nButton, oConfig, oFlash ) {
+							var tr = $( '#packagesTable>tbody tr.active' )[0];
+							var rowData = $( '#packagesTable' ).dataTable().fnGetData( tr );
+							if ( confirm( "¿Seguro que desea eliminar '" + rowData.name + "' ?" )) {
 
-    function afterSubmitForm2( responseText, statusText, jqXHR ) {
-      ajaxPackagesListRequest();
-      newForm();
-      return true;
-    }
+							}
+						},
+						"fnSelect": function ( nButton, oConfig, nRow ) {
+							if ( nRow.length == 0 ) return;
+							if ( $( nRow ).hasClass( 'active' )) {
+								$( nButton ).removeAttr( 'disabled' );
+							} else {
+								$( nButton ).attr( 'disabled', 'true');
+							}
+						}
+					},
+					{
+						"sExtends": "text",
+						"sButtonText": "Editar",
+						"fnInit": function ( nButton, oConfig ) {
+							var button = $( nButton );
+							button.attr( 'disabled', 'true');
+							button.attr( 'data-toggle', 'modal' );
+							button.attr( 'href', '#myModal' );
+							button.addClass( 'btn' );
+							button.addClass( 'btn-primary' );
+						},
+						"fnClick": function ( nButton, oConfig, oFlash ) {
+							var tr = $( '#packagesTable>tbody tr.active' )[0];
+							var rowData = $( '#packagesTable' ).dataTable().fnGetData( tr );
+							$( '.modal-body' ).html( getForm( rowData ) );
+							$( '.modal-title' ).html( 'Editar Software' );
+						},
+						"fnSelect": function ( nButton, oConfig, nRow ) {
+							if ( nRow.length == 0 ) return;
+							if ( $( nRow ).hasClass( 'active' )) {
+								$( nButton ).removeAttr( 'disabled' );
+							} else {
+								$( nButton ).attr( 'disabled', 'true');
+							}
+						}
+					}
+					],
+					"fnRowSelected": function( nodes ) {
+						$( '.glyphicon', nodes ).addClass( 'glyphicon-ok' );
+					},
+					"fnRowDeselected": function( nodes ) {
+						$( '.glyphicon', nodes ).removeClass( 'glyphicon-ok' );
+					},
+					"sSelectedClass": "active"
+				},
+				"fnServerData": function ( sSource, aoData, fnCallback ) {
+					$.getJSON( sSource, aoData, function ( json ) { 
+						fnCallback({ "aaData": json });
+					}).complete( function(){
+						$( packagesTable.fnGetNodes() ).children( 'td.description_tooltip' ).tooltip({
+							container: "table",
+							animated: true,
+							title: $(this).text,
+							placement: "bottom",
+							trigger: "hover"
+						});
+					});
+				},
+				"sAjaxSource": "../php/packages.php?command=list",
+				"bAutoWidth": true,
+				"bProcessing": true,
+				"aoColumns": [
+				{
+					"mData": "id",
+					"bVisible": false
+				},
+				{ 
+					"mData":"name",
+					"mRender": function( data, type, full ) {
+						return '<span class="glyphicon">  '+data+'</span>';
+					},
+					"sTitle": "Nombre",
+					"sClass": "left"
+				},
+				{ "mData": "os","sTitle": "Sistema Operativo", "sClass": "center" },
+				{ "mData": "arch", "sTitle": "Arquitectura", "sClass": "center"	},
+				{ "mData": "version", "sTitle": "Version", "sClass": "center" },
+				{ 
+					"mData": "description",
+					"sTitle": "Descripción",
+					"sClass": "left description_tooltip"
+				}
+				]
+			});
+	    
 
-    function submitError() {
+    	    $( '#myModal' ).on( 'shown.bs.modal', function() {
+    	    	$( '.nav-tabs' ).on( 'click', 'a', function( e ) {
+    	    		e.preventDefault();
+    	    		if (! $( this ).hasClass( 'add-tab' )) {
+    	    			$( this ).tab( 'show' );
+    	    		} else {
+    	    			var htmlContent = getFormArchSection( gdata );
+    	    			htmlContent += getFormOSSection( gdata );
+    	    			htmlContent += getFormFileUploadSection( gdata );
+    	    			htmlContent += getFormInstallerArgsSection( gdata);
+    	    			htmlContent += getFormVersionSection( gdata);
 
-    }
+    	    			var count = $( '.nav-tabs' ).children().length;
+    	    			$( this ).closest( 'li' ).before( '<li><a id="installer_' + count + '" data-toggle="tab" href="#instref' + count + '">Instalador ' + count + '</li>');
+    	    			$( '.tab-content' ).append( '<div class="tab-pane" id="instref' + count + '">' + htmlContent + '</div>' );
+    	    			$( '#installer_' + count ).tab('show');
+    	    		}
+    	    	});
+    	    	$( '.add-tab' ).click();
+    	    	$( '#myTab a:first').tab('show');
+    	    });
+    	});
 
-    $(document).ready( function () {
-      bar = jQuery('.bar');
-      percent = jQuery('.percent');
-      ajaxPackagesListRequest();
-      jQuery( '#newButton' ).click( function() {
-        showForm( '#form2' );
-        var selectedOption = jQuery("#appSelect option:selected").text();
-        console.log(packages);
-        if ( selectedOption == "" ){
-          newForm();
-        } else {
-          updateForm( packages[ selectedOption ] );
-        }
-      });
-      jQuery( '#form2' ).ajaxForm({
-        url: '../php/modules/add.php',
-        success: afterSubmitForm2,
-        beforeSubmit: beforeSubmitForm2,
-        error: submitError,
-        uploadProgress: function( event, position, total, percentComplete ) {
-          console.log(percentComplete);
-          var percentVal = percentComplete + '%';
-          bar.width(percentVal)
-          percent.text(percentVal);
-        }
-      });
-      jQuery( '#form2' ).hide();
-      jQuery( '#appSelect' ).change( function() {
-        var selectedOption = jQuery("#appSelect option:selected").text();
-        console.log(selectedOption);
-        jQuery( '#newButton' ).text( (selectedOption !== "" )? 'Agregar Instalador' : 'Nuevo' );
-      });
-    });
-  </script>
-  </head>
-  <body>
-    <!--  <form id="form1" class="jotform-form" enctype="multipart/form-data" accept-charset="utf-8">-->
-    <div class="form-all">
-      <ul class="form-section">
-        <li id="cid_1" class="form-input-wide">
-          <div class="form-header-group">
-            <h2 id="header_1" class="form-header">
-              Administración de Aplicaciones
-            </h2>
-            <div id="subHeader_1" class="form-subHeader">
-              Agregue las aplicaciones que estarán disponibles para instalar.
-            </div>
-          </div>
-        </li>
-        <li class="form-line" id="id_44">
-          <label class="form-label-left" id="label_44" for="input_44">Editar Aplicación</label>
-          <div id="cid_44" class="form-input">
-            <select class="form-dropdown" style="width:150px" id="appSelect" name="appName">
-              <option value=""></option>
-            </select>
-          </div>
-        </li>
-        <li class="form-line" id="id_45">
-          <div id="cid_45" class="form-input-wide">
-            <div style="margin-left:156px" class="form-buttons-wrapper">
-              <button id="newButton" class="form-submit-button">Nuevo</button>
-            </div>
-          </div>
-        </li>
-      </ul>
-    </div>
-    <!--</form>-->
+        
+		</script>
+	</head>
 
-    <form id="form2" name="form_form2" class="jotform-form" method="post" enctype="multipart/form-data" accept-charset="utf-8">
-      <div class="form-all">
-       <ul class="form-section">
-        <li id="cid_43" class="form-input-wide">
-          <div class="form-header-group">
-            <h2 id="Form2Header" class="form-header">Haga clic para editar este texto ...</h2>
-          </div>
-        </li>
-          <!--
-          <li class="form-line" id="id_35" style="display:hidden;">
-            <label class="form-label-left" id="label_32" for="appKey">
-              Clave<span class="form-required">*</span>
-            </label>
-            <div id="cid_35" class="form-input">
-              <input type="text" class=" form-textbox validate[required]" id="appKey" name="appKey" size="20" />
-            </div>
-          </li>
-        -->
-        <input type="hidden" class=" form-textbox " id="appKey" name="appKey" size="20" />
-        <li class="form-line" id="id_39">
-          <label class="form-label-left" id="label_39" for="appName">Nombre<span class="form-required">*</span></label>
-          <div id="cid_39" class="form-input">
-            <span class="form-sub-label-container">
-              <input type="text" class=" form-textbox validate[required, AlphaNumeric]" id="appName" name="appName" size="20" />
-              <label class="form-sub-label" for="appName"> El nombre del programa sin espacios se corresponderá con el nombre del script. </label>
-            </span>
-          </div>
-        </li>
-        <li class="form-line" id="id_40">
-          <label class="form-label-left" id="label_40" for="appDescription">Descripción </label>
-          <div id="cid_40" class="form-input">
-            <div class="form-textarea-limit"><span><textarea id="appDescription" class="form-textarea" name="appDescription" cols="40" rows="6"></textarea>
-              <div class="form-textarea-limit-indicator"><span type="Letters" limit="128" id="input_40-limit">0/128</span>
-              </div></span>
-              </div>
-            </div>
-          </li>
+	<body>
+		
+		<div id="myModal" data-backdrop="static" data-keyboard="false" class="modal fade">
+			<div  class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title"></h4>
+					</div>
+					<div class="modal-body">
+					</div>
 
-          <div id="exeSpecs">
-            <div id="tab-1">
-              <li class="form-line" id="id_37">
-                <label class="form-label-left" id="osLabel" for="input_37">Sistemas Operativos Disponibles<span class="form-required">*</span>
-                </label>
-                <div id="cid_37" class="form-input">
-                  <span class="form-sub-label-container">
-                    <div class="form-single-column">
-                      <span class="form-checkbox-item" style="clear:left;">
-                        <input type="checkbox" class="form-checkbox validate[required]" id="input_37_0" name="appOS[]" value="Windows XP" />
-                        <label for="input_37_0"> Windows XP </label>
-                      </span>
-                      <span class="clearfix"></span>
-                      <span class="form-checkbox-item" style="clear:left;">
-                        <input type="checkbox" class="form-checkbox validate[required]" id="input_37_1" name="appOS[]" value="Windows 7" />
-                        <label for="input_37_1"> Windows 7 </label>
-                      </span>
-                      <span class="clearfix"></span>
-                      <span class="form-checkbox-item" style="clear:left;">
-                        <input type="checkbox" class="form-checkbox validate[required]" id="input_37_2" name="appOS[]" value="Windows 8" />
-                        <label for="input_37_2"> Windows 8 </label>
-                      </span>
-                      <span class="clearfix"></span>
-                    </div>
-                    <label class="form-sub-label"> Debe seleccionar al menos un sistema operativo. </label>
-                </span>
-                </div>
-              </li>
-              <li class="form-line" id="id_51">
-                <label class="form-label-left" id="label_51" for="appArch"> Arquitectura<span class="form-required">*</span></label>
-                <div id="cid_51" class="form-input">
-                  <span class="form-sub-label-container">
-                    <select class="form-dropdown" style="width:150px" id="appArch" name="appArch">
-                      <option>i686</option>
-                      <option>x86_64</option>
-                    </select>
-                    <label class="form-sub-label"> La arquitectura correspondiente del instalador. </label>
-                  </span>
-                </div>
-              </li>
-              <li class="form-line" id="id_41">
-                <label class="form-label-left" id="label_41" for="appVersion"> Versión<span class="form-required">*</span></label>
-                <div id="cid_41" class="form-input">
-                  <span class="form-sub-label-container">
-                    <input type="text" class=" form-textbox validate[required]" id="appVersion" name="appVersion" size="20" />
-                    <label class="form-sub-label"> Indique la versión del programa que el instalador instalará. </label>
-                  </span>
-                </div>
-              </li>
-              <li class="form-line" id="id_42">
-                <label class="form-label-left" id="label_42" for="appArgs"> Argumentos de invocación </label>
-                <div id="cid_42" class="form-input">
-                  <span class="form-sub-label-container">
-                    <input type="text" class=" form-textbox" id="appArgs" name="appArgs" size="20" />
-                    <label class="form-sub-label"> Los argumentos serán pasados al instalador directamente. </label>
-                  </span>
-                </div>
-              </li>
-              <li class="form-line" id="id_36">
-                <label class="form-label-left" id="label_36" for="appFile"> Agregar Instalador<span class="form-required">*</span>
-                </label>
-                <div id="cid_36" class="form-input">
-                  <input class="form-upload validate[required]" type="file" id="appFile[]" name="appFile" file-accept="exe, msi, pdf, doc, docx, xls, csv, txt, rtf, html, zip, mp3, wma, mpg, flv, avi, jpg, jpeg, png, gif, bat"  />
-                </div>
-              </li>
-              <li class="form-line" id="progressLine" class="hide">
-                <label class="form-label-left" id="label_36" for="uploadProgress"> Progreso de carga:</label>
-                <div id="cid_36" class="form-input">
-                  <div id="uploadProgress" class="progress">
-                    <div class="bar"></div>
-                    <div class="percent">0%</div>
-                  </div>
-                </div>
-              </li>
-            </div>
-          </div>
+					<div class="modal-footer">
+						<button id="close-dialog-button" type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+					</div>
+				</div><!-- /.modal-content -->
+			</div><!-- /.modal-dialog -->
+		</div><!-- /.modal -->
 
-          <li class="form-line" id="id_33">
-            <div id="cid_33" class="form-input-wide">
-              <div style="margin-left:156px" class="form-buttons-wrapper">
-                <button id="input_33" type="submit" class="form-submit-button form-submit-button-simple_black">
-                  Submit
-                </button>
-                &nbsp;
-                <button id="input_reset_33" type="reset" class="form-submit-reset form-submit-button-simple_black">
-                  Resetear formulario
-                </button>
-              </div>
-            </div>
-          </li>
-
-        </ul>
-      </div>
-    </form>
-  </body>
-</html>
-
+		<div class="panel panel-primary">
+			<div class="panel-heading">
+				<h4 class="panel-title" data-toggle="collapse" data-target="#packagesTable-div" onclick="toggleShadeIcon(this);">
+					<span class="glyphicon glyphicon-th-large"> Programas disponibles</span>
+					<span class="glyphicon glyphicon-chevron-down pull-right"></span>
+				</h4>
+			</div>
+			<table id="packagesTable" class="table table-striped table-bordered" style="table-layout:fixed"></table>
+			<div class="panel-footer">
+				<span class="glyphicon glyphicon-info-sign" > Agregue, modifique y elimine programas.</span>
+			</div>
+		</div>
+	</div>
+	</body>
+	
+	</html>
