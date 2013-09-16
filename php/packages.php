@@ -29,6 +29,8 @@
 	* Encapsulates the reading and writing of JSON data into files located in LOG_DIR/$prefix directory with
 	* name $suffix. The idea of this class is to atomically read and write from files and store JSON encoded
 	* data keeping the details to a minimun.
+	*
+	* TODO: remove LOG_DIR and allow to be saved anywhere by subclasses
 	*/
 	class DataFile
 	{
@@ -41,13 +43,13 @@
 	    * @param suffix LOG_DIR/prefix/sufix will be the filename to be created
 	    * @param create Specifies wether or not the file should be created.
 		*/
-		public function __construct($prefix, $suffix, $create = true)
+		public function __construct($parent, $name, $create = true)
 		{
-			$dir = LOG_DIR . "/${prefix}";
+			$dir = $parent;
 			if (!file_exists($dir)){
 				mkdir($dir);
 			}
-			$this->filename = $dir . "/" . strtoupper($suffix);
+			$this->filename = $dir . "/" . $name;
 			if ($create) {
 				$fd = fopen($this->filename, "a+");
 				fclose($fd);
@@ -66,7 +68,7 @@
 				if (flock($fd, LOCK_EX))
 				{
 					ftruncate($fd, 0);
-					fwrite($fd, json_encode($data));
+					fwrite($fd, json_encode($data, JSON_PRETTY_PRINT));
 					fflush($fd);
 					flock($fd, LOCK_UN);
 				}
@@ -95,6 +97,16 @@
 			return $content;
 		}
 
+		public function chmod($mod) {
+			$fd = @fopen($this->filename, "r");
+			if (flock($fd, LOCK_EX))
+			{
+				chmod($this->filename, $mod);
+				flock($fd, LOCK_UN);
+			}
+			fclose($fd);
+		}
+
 		/**
 		* Detelets $this->filename
 		*/
@@ -114,6 +126,11 @@
 	*/
 	class InstallationDataFile extends DataFile
 	{
+
+		public function __construct($parent, $name, $create = true) {
+			DataFile::__construct(LOG_DIR . "/" . $parent, strtoupper($name), $create);
+		}
+
 		/**
 		* Returns a formatted string.
 		* @return the string representing the installation data
@@ -148,6 +165,93 @@
 		public function toJSON()
 		{
 			return $this->read();
+		}
+	}
+
+	class PackageData extends DataFile {
+
+		private $data;
+		private $packagePath;
+
+		public function __construct($packageName, $mustExists = false)
+		{
+			$directoryName = str_replace(" ", "", $packageName);
+			$directories = glob(PACKAGES_DIR . "/*", GLOB_ONLYDIR);
+			$found = false;
+			$this->packagePath = PACKAGES_DIR . "/${directoryName}";
+			foreach ($directories as $dir) {
+				if (strtolower($dir) === strtolower($this->packagePath)) {
+					$this->packagePath = $dir;
+					$found = true;
+				}
+			}
+			DataFile::__construct($this->packagePath, MANIFEST_FILENAME, !$found);
+			if (! $found) {
+				if ($mustExists) {
+					throw new Exception("Package not found, $mustExists was set to true.");
+				}
+				$this->write(array($directoryName => array()));
+			}
+			$this->data = json_decode($this->read(), true);
+		}
+
+		public function getPackagePath()
+		{
+			return $this->packagePath;
+		}
+
+		public function hasPackageItem($id)
+		{
+			return $this->indexOf($id) != -1;
+		}
+
+		public function addPackageItem(PackageItem $item)
+		{
+			if (! $this->hasPackageItem($item->getId())) {
+				array_push($this->data[basename($this->getPackagePath())], $item->jsonSerialize());
+				return true;
+			}
+
+			return false;
+		}
+
+		public function editPackageItem(PackageItem $item)
+		{
+
+		}
+
+		public function removePackageItem($id)
+		{
+			if ($added = $this->hasPackageItem($id)) {
+				array_splice($this->data[basename($this->getPackagePath())], $this->indexOf($id), 1);
+				return true;
+			}
+
+			return false;
+
+		}
+
+		public function save()
+		{
+			if (count($this->data[basename($this->getPackagePath())]) == 0) {
+				$files = glob($this->getPackagePath() . "/*");
+				foreach ($files as $file) {
+					unlink($file);
+				}
+				rmdir($this->getPackagePath());
+			} else {
+				$this->write($this->data);
+			}
+		}
+
+		private function indexOf($id)
+		{
+			foreach ($this->data[basename($this->getPackagePath())] as $index => $item) {
+				if ($item['id'] === $id) {
+					return $index;
+				}
+			}
+			return -1;
 		}
 	}
 
@@ -318,13 +422,106 @@
 		}
 	}
 
+	class PackageItem {
+		private $data = [];
+
+		private function __construct() {}
+
+		public static function create()
+		{
+			return new self();
+		}
+
+		public function fromValues($name, $os, $arch, $version, $installer, $installerArgs, $description)
+		{
+			$this->data['name'] = $name;
+			$this->data['os'] = $os;
+			$this->data['arch'] = $arch;
+			$this->data['version'] = $version;
+			$this->data['installer'] = $installer;
+			$this->data['installerArgs'] = $installerArgs;
+			$this->data['description'] = $description;
+			$this->data['id'] = $this->getId();
+			return $this;
+		}
+
+		public function fromArray($arrayData)
+		{
+			$this->fromValues(
+				$arrayData['name'],
+				$arrayData['os'],
+				$arrayData['arch'],
+				$arrayData['version'],
+				$arrayData['installer'],
+				$arrayData['installerArgs'],
+				$arrayData['description']
+				);
+			return $this;
+		}
+		public function getId()
+		{
+			return $this->data['name'] . "-" . $this->data['version'] . "." . $this->data['arch'];
+		}
+		public function getName()
+		{
+			return $this->data['name'];
+		}
+		public function getDescription()
+		{
+			return $this->data['description'];
+		}
+		public function getOS()
+		{
+			return $this->data['os'];
+		}
+		public function getArch()
+		{
+			return $this->data['arch'];
+		}
+		public function getVersion()
+		{
+			return $this->data['version'];
+		}
+		public function getInstaller()
+		{
+			return $this->data['installer'];
+		}
+		public function getInstallerArgs()
+		{
+			return $this->data['installerArgs'];
+		}
+
+		/**
+		* As for PHP > 5.4 JsonSerializable interface has a method 'jsonSerialize()' that
+		* allows any implementation to be passed to 'json_decode($myObjectJsonSerializable)'
+		*
+		* Instead of calling this method 'to_json()', I decided to call it the same way
+		* as the method from the JSONSerializable interface, though, if the class is not
+		* implementing the interface, you will need to call this method prior to encoding:
+		*
+	    * json_encode( $object.jsonSerialize() );
+	    *  
+	    * If you modify the code to implement JsonSerializable interface, it should be:
+	    *
+	    * json_encode( $object );
+		*
+		* The idea was to use either way 'json_encode()' for legibility concerns.
+		*/ 
+		public function jsonSerialize() {
+			return $this->data;
+		}
+	}
+
+
 	function getArgs() {
 		$args = array();
 		global $argv;
 
-		if (! empty($_GET))   $args = $_GET;
+		if (! empty($_GET)) $args = $_GET;
 
-		if (! empty($_POST))  $args = array_merge($args, $_POST);
+		if (! empty($_POST)) $args = array_merge($args, $_POST);
+
+		if (! empty($_FILES)) $args = array_merge($args, $_FILES);
 
 		if (! is_null($argv)) $args = array_merge($args, $argv);
 
@@ -337,6 +534,7 @@
 	function parseArgs() {
 		
 		$args = getArgs();
+
 		try {
 
 			// Create options for this module based on the object description passed in
@@ -350,7 +548,7 @@
 				// Required options, if any.
 				array("command")
 				);
-		    
+
 		    // Get the command module to import
 		    $command = $packagesOpts->getOption("command");
 		    $ip = Utils::getInvokingIP();
