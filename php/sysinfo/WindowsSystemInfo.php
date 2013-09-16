@@ -7,7 +7,7 @@
 * WindowsSystemInfo class provides information for windows machines. It will try to adapt WMISytemInfo
 * behaviour when possible. A no WMI approach should be made if WMISystemInfo is not available.
 */
-class WindowsSystemInfo implements SystemInfo
+class WindowsSystemInfo extends SystemInfo
 {
 	// TODO: Provide fallback option if WMI isn't available try guessing with other tools
 
@@ -24,6 +24,7 @@ class WindowsSystemInfo implements SystemInfo
 	*/
 	public function __construct( $hostname, $cred )
 	{
+		SystemInfo::__construct($hostname);
 		try {
 			// Try creating a WMISystemInfo object in order to adapt the behaviour.
 			$this->wmi = new WMISystemInfo( $hostname, $cred );
@@ -34,13 +35,11 @@ class WindowsSystemInfo implements SystemInfo
 			$user = $cred->getAdminUser();
 			$password =  $cred->getAdminPassword();
 			$this->sysinfo['hostname'] = $hostname;
-			$this->sysinfo['domain'] = "";
-			// KISS principle: We know it's a windows machine so set it to OS_WINDOWS
+			$this->sysinfo['domain'] = UNKNOWN;
+			// We know it's a windows machine so set it to OS_WINDOWS
 			$this->sysinfo['OSName'] = OS_WINDOWS;
-			// We don't know which architecture it is, but we know that 32bit applications
-			// are 64bit compatible.
-			$this->sysinfo['OSArchitecture'] = OS_ARCH_X86;
-			$this->sysinfo['OSVersion'] = OS_UNKNOWN;
+			$this->sysinfo['OSArchitecture'] = UNKNOWN;
+			$this->sysinfo['OSVersion'] = UNKNOWN;
 		}
 	}
 
