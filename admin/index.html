@@ -15,12 +15,76 @@
 		<link rel="stylesheet" href="../css/DT_bootstrap.css">
 
 		<script type="text/javascript" charset="utf-8" src="../js/jquery-dev.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/jquery.form.js"></script>
 		<script type="text/javascript" charset="utf-8" src="../js/jquery.dataTables.js"></script>
 		<script type="text/javascript" charset="utf-8" src="../js/TableTools.js"></script>
 		<script type="text/javascript" charset="utf-8" src="../js/bootstrap.js"></script>
 		<script type="text/javascript" charset="utf-8" src="../js/DT_bootstrap.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/dataTables.reloadAjax.plugin.js"></script>
+		<script type="text/javascript" charset="utf-8" src="../js/jquery.validate.js"></script>
+
 		<script>
 		var gdata;
+
+		function onShowFormDialog() {
+			// We create the actions desired when the dialog is shown for form data
+			$( '#myModal' ).on( 'shown.bs.modal', function() {
+				// If we clicked in tabs, show them. If the tab is the "plus" sign
+				// add new tabs.
+				$( '.nav-tabs' ).on( 'click', 'a', function( e ) {
+					e.preventDefault();
+					if (! $( this ).hasClass( 'add-tab' )) {
+						$( this ).tab( 'show' );
+					} else {
+						addTabForm( $( this ).closest( 'li' ) );
+					}
+				});
+				// Do a facke click() on tab in order to create the first tab form
+				$( '.add-tab' ).click();
+				// Selects the first tab form
+				$( '#myTab a:first').tab('show');
+				// Rules for validating the form
+				$( '#form' ).validate({
+					rules: {
+						"name": {
+							required: true,
+							letters: true
+						},
+						"description": "required",
+						"version[]": "required",
+						"installer[]": "required",
+						"arch[]": "required",
+						"os[]": "required"
+					},
+					errorPlacement: function( error, element ) {
+						error.addClass("alert alert-danger");
+						error.insertAfter( element );
+					},
+					errorElement: "div",
+					highlight: function( element ) {
+						$( element ).closest( '.form-group' ).addClass( 'has-error' );
+					},
+					submitHandler: function(form) {
+						var html = '<div class="progress">';
+						html += '<div class="progress-bar"  role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">';
+						html += '</div></div>';
+						$( '.modal-body' ).html( html );
+						$( '.modal-title' ).html( 'Subiendo archivos... ');
+						$(form).ajaxSubmit({
+						success: function( responseText, statusText, xhr, $form ) {
+							// TODO: CHECK FOR ERRORS
+							$( '.modal-title' ).html( 'Paquete agregado correctamente, cierre el diálogo.' );
+						},
+						uploadProgress: function(event, position, total, percentComplete) {
+							var percentVal = percentComplete + '%';
+							$( '.progress-bar' ).width( percentVal );
+							$( '.modal-title' ).html( 'Subiendo archivos... ' + percentVal);
+						}
+					});
+					}
+				});
+			});
+		}
 
 		function getForm( data ) {
 			if ( typeof( data ) === "undefined" ) { 
@@ -34,19 +98,20 @@
 				};
 			}
 			gdata = data;
-			var html = "<form class='form-horizontal' role='form'>";
+			var html = "<form id='form' class='form-horizontal' role='form' method='post' enctype='multipart/form-data' action='../php/packages.php'>";
+			html += "<input type='text' name='command' value='add' style='display:none;'/>";
 			// Name
 			html += "<div class='form-group'>";
 			html += "<label for='inputId' class='col-lg-3 control-label'>Nombre</label>";
 			html += "<div class='col-lg-9'>";
-			html += "<input value='" + data.name + "' type='text' class='form-control' id='inputId' placeholder='Nombre del programa sin espacios ni puntuaciones'>";
+			html += "<input value='" + data.name + "' type='text' name='name' class='form-control' id='inputId' placeholder='Nombre del programa sin espacios ni puntuaciones'>";
 			html += "</div>";
 			html += "</div>";
 			// Description
 			html += "<div class='form-group'>";
 			html += "<label for='inputDescription' class='col-lg-3 control-label'>Descripción</label>";
 			html += "<div class='col-lg-9'>";
-			html += "<input value='" + data.description + "' type='text' class='form-control' id='inputDescription' placeholder='Descripción del programa.'>";
+			html += "<input value='" + data.description + "' name='description' type='text' class='form-control' id='inputDescription' placeholder='Descripción del programa.'>";
 			html += "</div>";
 			html += "</div>";
 			// TABS
@@ -89,21 +154,21 @@
 			// Windows 7
 			html += "<div class='checkbox'>";
 			html += "<label>";
-			html += "<input type='checkbox' value='' " + (( data.os.indexOf( 'Windows 7' ) != -1 )? "checked": "") + ">";
+			html += "<input type='checkbox' name='os[" + data.n + "][0]' value='Windows 7' " + (( data.os.indexOf( 'Windows 7' ) != -1 )? "checked": "") + ">";
 			html += "Windows 7";
 			html += "</label>";
 			html += "</div>";
 			// Windows XP
 			html += "<div class='checkbox'>";
 			html += "<label>";
-			html += "<input type='checkbox' value='' " + (( data.os.indexOf( 'Windows XP' ) != -1 )? "checked": "") + ">";
+			html += "<input type='checkbox' name='os[" + data.n + "][1]' value='Windows XP' " + (( data.os.indexOf( 'Windows XP' ) != -1 )? "checked": "") + ">";
 			html += "Windows XP";
 			html += "</label>";
 			html += "</div>";
 			// Windows 8
 			html += "<div class='checkbox'>";
 			html += "<label>";
-			html += "<input type='checkbox' value='' " + (( data.os.indexOf( 'Windows 8' ) != -1 )? "checked": "") + ">";
+			html += "<input type='checkbox' name='os[" + data.n + "][2]' value='Windows 8' " + (( data.os.indexOf( 'Windows 8' ) != -1 )? "checked": "") + ">";
 			html += "Windows 8";
 			html += "</label>";
 			html += "</div>";
@@ -117,11 +182,16 @@
 			html += "<div class='form-group'>"
 			html += "<label for='arch' class='control-label col-lg-3'>Arquitectura</label>";
 			html += "<div class='col-lg-9'>"
-			html += "<select id='arch' class='form-control'>";
-			html += "<option>i686</option>";
-			html += "<option>x86_64</option>"
-			html += "</select>";
+
+			html += "<label class='radio-inline control-label'>";
+			html += "<input type='radio' name='arch[" + data.n + "]' value='i686'>32 bits</input>";
+			html += "</label>";
+
+			html += "<label class='radio-inline control-label'>";
+			html += "<input type='radio' name='arch[" + data.n + "]' value='x86_64'/>64 bits</input>";
+			html += "</label>";
 			html += "</div>";
+
 			html += "</div>";
 			return html;
 		}
@@ -131,7 +201,7 @@
 			html += "<div class='form-group'>";
 			html += "<label for='inputVersion' class='col-lg-3 control-label'>Version</label>";
 			html += "<div class='col-lg-9'>";
-			html += "<input value='" + data.version + "' type='text' class='form-control' id='inputVersion' placeholder='Version del programa, ejemplo: 1.2.2'/>";
+			html += "<input value='" + data.version + "' type='text' name='version[]' class='form-control' id='inputVersion' placeholder='Version del programa, ejemplo: 1.2.2'/>";
 			html += "</div>";
 			html += "</div>";
 			return html;
@@ -142,7 +212,7 @@
 			html += "<div class='form-group'>";
 			html += "<label for='inputArguments' class='col-lg-3 control-label'>Argumentos</label>";
 			html += "<div class='col-lg-9'>";
-			html += "<input value='" + data.installerArgs + "' type='text' class='form-control' id='inputArguments' placeholder='Ejemplo: /S /norestart'/>";
+			html += "<input value='" + data.installerArgs + "' type='text' class='form-control' name='installerArgs[]' id='inputArguments' placeholder='Ejemplo: /S /norestart'/>";
 			html += "</div>";
 			html += "</div>";
 			return html;
@@ -153,18 +223,35 @@
 			html += "<div class='form-group'>"
 			html += "<label for='file' class='col-lg-3 control-label'>Archivo</label>";
 			html += "<div class='col-lg-9'>";
-			html += "<input type='file' id='file'/>";
+			html += "<input type='file' id='installer' name='installer[]'/>";
 			html += "</div>";
 			html += "</div>";
 			return html;
 		}
 
-		$(document).ready( function() { 
+		function addTabForm( tab ) {
+			var count = $( '.nav-tabs' ).children().length;
+			gdata.n = count - 1;
+			var htmlContent = getFormArchSection( gdata );
+			htmlContent += getFormOSSection( gdata );
+			htmlContent += getFormFileUploadSection( gdata );
+			htmlContent += getFormInstallerArgsSection( gdata);
+			htmlContent += getFormVersionSection( gdata);
+			tab.before( '<li><a id="installer_' + count + '" data-toggle="tab" href="#instref' + count + '">Instalador ' + count + '</li>' );
+			$( '.tab-content' ).append( '<div class="tab-pane" id="instref' + count + '">' + htmlContent + '</div>' );
+			$( '#installer_' + count ).tab('show');
+		}
+
+		$(document).ready( function() {
+			jQuery.validator.addMethod( "letters", function( value, element ) {
+				return this.optional( element ) || /^[a-zA-Z ]*$/.test( value );
+			}, "No se permiten puntuaciones, signos, ni números." );
+
 			var packagesTable = $( '#packagesTable' ).dataTable({
 				"sDom": "<'row'<'col-lg-6'T><'col-lg-6'f>r>t<'row'<'col-lg-6'><'col-lg-6'p>>",
 				"sPaginationType": "bootstrap",
 				"oTableTools": {
-					"sRowSelect": "single",
+					"sRowSelect": "multi",
 					"aButtons": [
 					{
 						"sExtends": "text",
@@ -179,6 +266,7 @@
 						"fnClick": function ( nButton, oConfig, oFlash ) {
 							$( '.modal-body' ).html( getForm() );
 							$( '.modal-title' ).html( 'Nuevo Software' );
+							onShowFormDialog();
 						},
 						"fnSelect": function ( nButton, oConfig, nRow ) {
 							// row selected
@@ -191,18 +279,36 @@
 							$( nButton ).attr( 'disabled', 'true');
 						},
 						"fnClick": function ( nButton, oConfig, oFlash ) {
-							var tr = $( '#packagesTable>tbody tr.active' )[0];
-							var rowData = $( '#packagesTable' ).dataTable().fnGetData( tr );
-							if ( confirm( "¿Seguro que desea eliminar '" + rowData.name + "' ?" )) {
+							var trs = $( '#packagesTable>tbody tr.active' );
+							var table = $( '#packagesTable' ).dataTable();
+							var message = "Eligió eliminar: \n";
+							var url = "../php/packages.php?command=remove&";
+							for( var i = 0; i < trs.length; i++ ) {
+								var rowData = table.fnGetData( trs[i] );
+								message += "\n    " + i + ". " + rowData.id;
+								url += "id[]=" + rowData.id + "&";
+							}
+							if ( confirm( message + "\n\n¿Está seguro que desea ELIMINAR los ítems listados arriba?")) {
+								$.ajax({
+									url: url,
+									error: function( jqXHR, textStatus, errorThrown ) {
+										alert('Ocurrió un error procesando la solicitud. Error: "' + textStatus + '"');
+									},
+									success: function( data, textStatus, jqXHR) {
+										// TODO: CHECK DATA FOR ERRORS
+										$( '#packagesTable' ).dataTable().fnReloadAjax();										
+									}
+								});
+
 
 							}
 						},
 						"fnSelect": function ( nButton, oConfig, nRow ) {
-							if ( nRow.length == 0 ) return;
-							if ( $( nRow ).hasClass( 'active' )) {
-								$( nButton ).removeAttr( 'disabled' );
+							var trs = $( '#packagesTable>tbody tr.active' );
+							if ( trs.length == 0) {
+								$( nButton ).attr( 'disabled', 'true' );
 							} else {
-								$( nButton ).attr( 'disabled', 'true');
+								$( nButton ).removeAttr( 'disabled' );
 							}
 						}
 					},
@@ -224,11 +330,11 @@
 							$( '.modal-title' ).html( 'Editar Software' );
 						},
 						"fnSelect": function ( nButton, oConfig, nRow ) {
-							if ( nRow.length == 0 ) return;
-							if ( $( nRow ).hasClass( 'active' )) {
-								$( nButton ).removeAttr( 'disabled' );
+							var trs = $( '#packagesTable>tbody tr.active' );
+							if ( trs.length == 0 || trs.length > 1 ) {
+								$( nButton ).attr( 'disabled', 'true' );
 							} else {
-								$( nButton ).attr( 'disabled', 'true');
+								$( nButton ).removeAttr( 'disabled' );
 							}
 						}
 					}
@@ -280,29 +386,12 @@
 				}
 				]
 			});
-	    
 
-    	    $( '#myModal' ).on( 'shown.bs.modal', function() {
-    	    	$( '.nav-tabs' ).on( 'click', 'a', function( e ) {
-    	    		e.preventDefault();
-    	    		if (! $( this ).hasClass( 'add-tab' )) {
-    	    			$( this ).tab( 'show' );
-    	    		} else {
-    	    			var htmlContent = getFormArchSection( gdata );
-    	    			htmlContent += getFormOSSection( gdata );
-    	    			htmlContent += getFormFileUploadSection( gdata );
-    	    			htmlContent += getFormInstallerArgsSection( gdata);
-    	    			htmlContent += getFormVersionSection( gdata);
-
-    	    			var count = $( '.nav-tabs' ).children().length;
-    	    			$( this ).closest( 'li' ).before( '<li><a id="installer_' + count + '" data-toggle="tab" href="#instref' + count + '">Instalador ' + count + '</li>');
-    	    			$( '.tab-content' ).append( '<div class="tab-pane" id="instref' + count + '">' + htmlContent + '</div>' );
-    	    			$( '#installer_' + count ).tab('show');
-    	    		}
-    	    	});
-    	    	$( '.add-tab' ).click();
-    	    	$( '#myTab a:first').tab('show');
-    	    });
+	        // When the dialog is hidden
+			$( '#myModal' ).on( 'hidden.bs.modal', function() {
+			    $( '#myModal' ).off( 'shown.bs.modal' );
+			    $( '#packagesTable' ).dataTable().fnReloadAjax();
+			});
     	});
 
         
