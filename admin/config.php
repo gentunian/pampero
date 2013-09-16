@@ -28,13 +28,17 @@
 	define( 'UNIX_ADMIN', $iniContents['General']['UNIX_ADMIN'] );
 	define( 'NT_ADMIN', $iniContents['General']['WINDOWS_ADMIN'] );
 	define( 'NATIVE_OS', strtoupper(explode( ' ', php_uname(), 2)[0]) );
-	define( 'OS_UNKNOWN', 'Unknown' );
+	define( 'UNKNOWN', 'Unknown' );
+	define( 'OS_UNKNOWN', UNKNOWN );
+	define( 'OS_UNIX', 'Unix' );
 	define( 'OS_WINDOWS', 'Windows' );
 	define( 'OS_ARCH_X86', $iniContents['General']['OS_ARCH_X86'] );
 	define( 'OS_ARCH_X86_64', $iniContents['General']['OS_ARCH_X86_64'] );
 	define( 'MANIFEST_FILENAME', $iniContents['General']['MANIFEST_FILENAME'] );
 	define( 'PASSWORD_FILE', $iniContents['General']['PASSWORD_FILE'] );
 	define( 'PACKAGES_DIR', $iniContents['General']['PACKAGES_DIR'] );
+	define( 'PACKAGES_SHARE', $iniContents['General']['PACKAGES_SHARE'] );
+	define( 'PACKAGES_GROUP_FILE', PACKAGES_DIR . DIRECTORY_SEPARATOR . 'groups.json' );
 	define( 'LOG_DIR', $iniContents['General']['LOG_DIR'] );
 	define( 'TMP_DIR', $iniContents['General']['TMP_DIR'] );
 	define( 'WINDOWS_WINDOWS_INSTALLER', $iniContents['Installers']['WINDOWS_WINDOWS'] );
