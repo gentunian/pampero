@@ -14,7 +14,7 @@
 * NOTE: The construction of this object may fail if WMI object can't be created.
 *
 */
-class WMISystemInfo implements SystemInfo
+class WMISystemInfo extends SystemInfo
 {
 	private $sysinfo = NULL;
 
@@ -25,8 +25,9 @@ class WMISystemInfo implements SystemInfo
 	* @param hostname The host name from the machine we want to get system information
 	* @throws Exception if WMI connection fails
 	*/
-	public function __construct( $hostname, $cred )
+	public function __construct($hostname, $cred)
 	{
+		SystemInfo::__construct($hostname);
 		$user = $cred->getAdminUser();
 		$password =  $cred->getAdminPassword();
 
