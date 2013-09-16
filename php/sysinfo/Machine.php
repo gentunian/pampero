@@ -17,7 +17,11 @@ class Machine {
 
 		$systype = Utils::getSystemType( $hostname );
 		$class = $systype."SystemInfo";
-		$this->sysinfo = new $class( $hostname, $this->credentials );
+		if (class_exists($class)) {
+			$this->sysinfo = new $class( $hostname, $this->credentials );
+		} else {
+			$this->sysinfo = new UnknowSystemInfo();
+		}
 	}
 	
 	public function getSystemInfo() {
@@ -26,6 +30,26 @@ class Machine {
 
 	public function getCredentials() {
 		return $this->credentials;
+	}
+
+}
+
+class UnknowSystemInfo {
+	public function getHostname() {
+		return $this->hostname;
+	}
+	public function getDomain() {
+		return UNKNOWN;
+	}
+	public function getOSVersion() {
+		return UNKNOWN;
+	}
+	public function getOSName() {
+		return UNKNOWN;
+	}
+
+	public function getOSArchitecture() {
+		return UNKNOWN;
 	}
 }
 
