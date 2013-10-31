@@ -110,9 +110,9 @@ class WMISystemInfo extends SystemInfo
 		foreach ( $this->sysinfo['OperatingSystem'] as $wmi_call)
 			$arch = $wmi_call->OSArchitecture;
 		if ( stripos( $arch, "64") !== FALSE ) {
-			return "x86_64";
+			return $GLOBALS['AVAILABLE_ARCH']['OS_ARCH_X86_64'];
 		} else  {
-			return "i686";
+			return $GLOBALS['AVAILABLE_ARCH']['OS_ARCH_I686'];
 		}
 	}
 }

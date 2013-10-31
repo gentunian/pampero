@@ -38,8 +38,8 @@ class MyCredentialsProvider implements CredentialsProvider
 		}
 
 		$sysType = Utils::getSystemType( $hostname );
-		// TODO: Add cases
-		if ( $sysType == OS_WINDOWS ) {
+
+		if ( $sysType == OS_WINDOWS_FAMILY ) {
 			$adm = NT_ADMIN;
 		}
 

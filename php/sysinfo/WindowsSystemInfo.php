@@ -37,7 +37,7 @@ class WindowsSystemInfo extends SystemInfo
 			$this->sysinfo['hostname'] = $hostname;
 			$this->sysinfo['domain'] = UNKNOWN;
 			// We know it's a windows machine so set it to OS_WINDOWS
-			$this->sysinfo['OSName'] = OS_WINDOWS;
+			$this->sysinfo['OSName'] = OS_WINDOWS_FAMILY;
 			$this->sysinfo['OSArchitecture'] = UNKNOWN;
 			$this->sysinfo['OSVersion'] = UNKNOWN;
 		}

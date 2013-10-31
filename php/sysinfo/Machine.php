@@ -1,7 +1,8 @@
 <?php
 
 /**
-*
+* Machine class:
+* --------------
 */
 class Machine {
 	private $sysinfo = NULL;
@@ -34,6 +35,11 @@ class Machine {
 
 }
 
+/**
+* UnknowSystemInfo class:
+* -----------------------
+* 
+*/
 class UnknowSystemInfo {
 	public function getHostname() {
 		return $this->hostname;
