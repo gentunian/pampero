@@ -113,10 +113,13 @@ class Utils
 			$system = ucfirst( strtolower( NATIVE_OS ));
 		} elseif ( $output->_ttl != NULL ) {
 			$system =  ( $output->_ttl > 64 )? OS_WINDOWS : OS_UNIX;
+
 		}
 
 		ini_set('display_errors', $display_errors);
+
 		return $system;
+
 	}
 
 	public static function removeDomainFromHostname( $host )

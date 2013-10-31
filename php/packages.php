@@ -23,6 +23,130 @@
 	define( 'FROM_PACKAGES', 'defined' );
 
 	/**
+	* Command abstract class:
+	* -----------------------
+	*
+	*/
+	abstract class Command {
+		private $name = NULL;
+		private $data = NULL;
+		private $options = NULL;
+		private $error = NULL;
+
+		public function __construct($name, $args = NULL)
+		{
+			$this->setOptions(new Options($args, array()));
+			$this->name = $name;
+		}
+
+		public abstract function execute();
+		public abstract function getUsage();
+
+		public function getName()
+		{
+			return $this->name;
+		}
+
+		public function setError($error)
+		{
+			$this->error = $error;
+		}
+
+		public function getError()
+		{
+			return $this->error;
+		}
+
+		public function getOptions()
+		{
+			return $this->options;
+		}
+
+		public function setOptions($opts)
+		{
+			$this->options = $opts;
+		}
+
+		public function getData()
+		{
+			return $this->data;
+		}
+
+		public function setData(JsonSerializable $data = NULL)
+		{
+			if ($data === NULL) $data = new NullCommandData();
+			$this->data = $data;
+		}
+	}
+
+	/**
+	* NullCommandData class:
+	* ----------------------
+	*/
+	class NullCommandData implements JsonSerializable {
+		function jsonSerialize()
+		{
+			return array();
+		}
+	}
+
+	/**
+	* CommandOutput interface:
+	* ------------------------
+	*/
+	interface CommandResult {
+		function getOutput(Command $cmd);
+	}
+
+	/**
+	* JSONResult class:
+	* -----------------
+	*/
+	class JSONResult implements CommandResult {
+
+		function getOutput(Command $cmd)
+		{
+			$output = array(
+				"name" => $cmd->getname(),
+				"error" => $cmd->getError(),
+				"data" => $cmd->getData()->jsonSerialize()
+				);
+			return json_encode($output);
+		}
+	}
+
+	/**
+	* 
+	*/
+	class ConsoleResult implements CommandResult {
+		function getOutput(Command $cmd)
+		{
+			$output = sprintf("%s:\n%s\n\n", $cmd->getName(), str_repeat("-", strlen($cmd->getName()) + 1));
+			$output .= sprintf("'%s' Command Data:\n", $cmd->getName());
+			/*foreach($cmd->getData()->jsonSerialize() as $key => $value) {
+				$output .= sprintf("\t* %s\n", $key);
+			}
+			*/
+			$output .= $this->printArray($cmd->getData()->jsonSerialize());
+			return $output;
+		}
+
+		private function printArray($array, $spaces = "  ")
+		{
+			$output = "";
+			foreach($array as $key => $value) {
+				if (is_array($value)) {
+					$output .= sprintf("\n${spaces}* %s:\n%s", $key, $this->printArray($value, "${spaces}  "));
+				} else {
+					$output .= sprintf("${spaces} %s: %s\n", $key, $value);
+				}
+			}
+			return $output;
+		}
+	}
+
+
+	/**
 	* DataFile class:
 	* ---------------
 	*
@@ -168,7 +292,11 @@
 		}
 	}
 
-	class PackageData extends DataFile {
+	/**
+	* PackageData class:
+	* ------------------
+	*/
+	class PackageData extends DataFile implements JsonSerializable {
 
 		private $data;
 		private $packagePath;
@@ -207,12 +335,10 @@
 
 		public function addPackageItem(PackageItem $item)
 		{
-			if (! $this->hasPackageItem($item->getId())) {
-				array_push($this->data[basename($this->getPackagePath())], $item->jsonSerialize());
-				return true;
+			if ($this->hasPackageItem($item->getId())) {
+				throw new Exception("Package '" . $item->getId() . "' already exists.");
 			}
-
-			return false;
+			array_push($this->data[basename($this->getPackagePath())], $item->jsonSerialize());
 		}
 
 		public function editPackageItem(PackageItem $item)
@@ -222,13 +348,10 @@
 
 		public function removePackageItem($id)
 		{
-			if ($added = $this->hasPackageItem($id)) {
-				array_splice($this->data[basename($this->getPackagePath())], $this->indexOf($id), 1);
-				return true;
+			if (! $this->hasPackageItem($id)) {
+				throw new Exception("Package '" . $item->getId() . "' was not removed.");
 			}
-
-			return false;
-
+			array_splice($this->data[basename($this->getPackagePath())], $this->indexOf($id), 1);
 		}
 
 		public function save()
@@ -244,6 +367,11 @@
 			}
 		}
 
+		public function jsonSerialize()
+		{
+			return json_decode($this->read(), true);
+		}
+
 		private function indexOf($id)
 		{
 			foreach ($this->data[basename($this->getPackagePath())] as $index => $item) {
@@ -252,6 +380,84 @@
 				}
 			}
 			return -1;
+		}
+	}
+
+	/**
+	* PackageItem class:
+	* ------------------
+	*/
+	class PackageItem implements JsonSerializable {
+		private $data = [];
+
+		private function __construct() {}
+
+		public static function create()
+		{
+			return new self();
+		}
+
+		public function fromValues($name, $os, $arch, $version, $installer, $installerArgs, $description)
+		{
+			$this->data['name'] = $name;
+			$this->data['os'] = $os;
+			$this->data['arch'] = $arch;
+			$this->data['version'] = $version;
+			$this->data['installer'] = $installer;
+			$this->data['installerArgs'] = $installerArgs;
+			$this->data['description'] = $description;
+			$this->data['id'] = $this->getId();
+			return $this;
+		}
+
+		public function fromArray($arrayData)
+		{
+			$this->fromValues(
+				$arrayData['name'],
+				$arrayData['os'],
+				$arrayData['arch'],
+				$arrayData['version'],
+				$arrayData['installer'],
+				$arrayData['installerArgs'],
+				$arrayData['description']
+				);
+			return $this;
+		}
+		public function getId()
+		{
+			return $this->data['name'] . "-" . $this->data['version'] . "." . $this->data['arch'];
+		}
+		public function getName()
+		{
+			return $this->data['name'];
+		}
+		public function getDescription()
+		{
+			return $this->data['description'];
+		}
+		public function getOS()
+		{
+			return $this->data['os'];
+		}
+		public function getArch()
+		{
+			return $this->data['arch'];
+		}
+		public function getVersion()
+		{
+			return $this->data['version'];
+		}
+		public function getInstaller()
+		{
+			return $this->data['installer'];
+		}
+		public function getInstallerArgs()
+		{
+			return $this->data['installerArgs'];
+		}
+
+		public function jsonSerialize() {
+			return $this->data;
 		}
 	}
 
@@ -422,97 +628,7 @@
 		}
 	}
 
-	class PackageItem {
-		private $data = [];
-
-		private function __construct() {}
-
-		public static function create()
-		{
-			return new self();
-		}
-
-		public function fromValues($name, $os, $arch, $version, $installer, $installerArgs, $description)
-		{
-			$this->data['name'] = $name;
-			$this->data['os'] = $os;
-			$this->data['arch'] = $arch;
-			$this->data['version'] = $version;
-			$this->data['installer'] = $installer;
-			$this->data['installerArgs'] = $installerArgs;
-			$this->data['description'] = $description;
-			$this->data['id'] = $this->getId();
-			return $this;
-		}
-
-		public function fromArray($arrayData)
-		{
-			$this->fromValues(
-				$arrayData['name'],
-				$arrayData['os'],
-				$arrayData['arch'],
-				$arrayData['version'],
-				$arrayData['installer'],
-				$arrayData['installerArgs'],
-				$arrayData['description']
-				);
-			return $this;
-		}
-		public function getId()
-		{
-			return $this->data['name'] . "-" . $this->data['version'] . "." . $this->data['arch'];
-		}
-		public function getName()
-		{
-			return $this->data['name'];
-		}
-		public function getDescription()
-		{
-			return $this->data['description'];
-		}
-		public function getOS()
-		{
-			return $this->data['os'];
-		}
-		public function getArch()
-		{
-			return $this->data['arch'];
-		}
-		public function getVersion()
-		{
-			return $this->data['version'];
-		}
-		public function getInstaller()
-		{
-			return $this->data['installer'];
-		}
-		public function getInstallerArgs()
-		{
-			return $this->data['installerArgs'];
-		}
-
-		/**
-		* As for PHP > 5.4 JsonSerializable interface has a method 'jsonSerialize()' that
-		* allows any implementation to be passed to 'json_decode($myObjectJsonSerializable)'
-		*
-		* Instead of calling this method 'to_json()', I decided to call it the same way
-		* as the method from the JSONSerializable interface, though, if the class is not
-		* implementing the interface, you will need to call this method prior to encoding:
-		*
-	    * json_encode( $object.jsonSerialize() );
-	    *  
-	    * If you modify the code to implement JsonSerializable interface, it should be:
-	    *
-	    * json_encode( $object );
-		*
-		* The idea was to use either way 'json_encode()' for legibility concerns.
-		*/ 
-		public function jsonSerialize() {
-			return $this->data;
-		}
-	}
-
-
+	
 	function getArgs() {
 		$args = array();
 		global $argv;
@@ -556,7 +672,6 @@
 		    $arguments = $packagesOpts->getOptionsAsString() . $packagesOpts->getDisposedOptionsAsString();
  		    Utils::log("Request from ${host} (${ip}): '${arguments}'", KLogger::INFO);
 
-
 		    // Import the module that has the same name as the command
 			do_import($command);
 		    
@@ -593,14 +708,21 @@
 		// Call the function $command with $args arguments
 		$result = call_user_func( $command, $args );
 
+		// TODO: make $result be some command wrapper class that implements a method called 'getOutput()'.
+		// For example:
+		//
+		// $cmdClass = "${command}Command";
+		// $command = new AddCommand($args) ;
+		// $command->execute();
+		// echo $command->getOutput();
+		//
+		// The object should know which kind of output provide based on $args.
+
 		// Echo back the result
-		// TODO: output can vary depending on from where the request was made.
 		// AJAX request should output default plain JSON. 
 		// Standard HTTP request should output default JSON with <pre> </pre> and JSON_PRETTY_PRINT.
 		// Console request should output default to text output.
 		// All this output behaviour is managed by 'output' option.
-		// This should be the place to autodetect from where the request is made
-		// and in turn, if no 'output' option was provided, set it to something.
 		$output = call_user_func( "${command}_output", $result, $args );
 
 		echo $output;

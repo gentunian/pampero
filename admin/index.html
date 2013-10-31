@@ -72,8 +72,20 @@
 						$( '.modal-title' ).html( 'Subiendo archivos... ');
 						$(form).ajaxSubmit({
 						success: function( responseText, statusText, xhr, $form ) {
-							// TODO: CHECK FOR ERRORS
-							$( '.modal-title' ).html( 'Paquete agregado correctamente, cierre el diálogo.' );
+							var data = JSON.parse( responseText );
+							var modalTitle, modalBody, alertClass;
+
+							if ( data.error === null ) {
+								alertClass = 'alert-success';
+								modalTitle = 'Operación finalizada correctamente: ' + data.name;
+								modalBody = '<b>Exito:</b> No se reportaron errores durante la operación: <b>' + data.name + '</b>.';
+							} else {
+								alertClass = 'alert-danger';
+								modalTitle = 'La operación <b>' + data.name + '</b> finalizó con errores.';
+								modalBody = '<b>Error:</b> ' + data.error;
+							}
+							$( '.modal-title' ).html( modalTitle );
+							$( '.modal-body' ).html( '<div class="alert ' + alertClass + '">' + modalBody + '</div>');
 						},
 						uploadProgress: function(event, position, total, percentComplete) {
 							var percentVal = percentComplete + '%';
@@ -154,21 +166,21 @@
 			// Windows 7
 			html += "<div class='checkbox'>";
 			html += "<label>";
-			html += "<input type='checkbox' name='os[" + data.n + "][0]' value='Windows 7' " + (( data.os.indexOf( 'Windows 7' ) != -1 )? "checked": "") + ">";
+			html += "<input type='checkbox' name='os[" + data.n + "][]' value='Windows 7' " + (( data.os.indexOf( 'Windows 7' ) != -1 )? "checked": "") + ">";
 			html += "Windows 7";
 			html += "</label>";
 			html += "</div>";
 			// Windows XP
 			html += "<div class='checkbox'>";
 			html += "<label>";
-			html += "<input type='checkbox' name='os[" + data.n + "][1]' value='Windows XP' " + (( data.os.indexOf( 'Windows XP' ) != -1 )? "checked": "") + ">";
+			html += "<input type='checkbox' name='os[" + data.n + "][]' value='Windows XP' " + (( data.os.indexOf( 'Windows XP' ) != -1 )? "checked": "") + ">";
 			html += "Windows XP";
 			html += "</label>";
 			html += "</div>";
 			// Windows 8
 			html += "<div class='checkbox'>";
 			html += "<label>";
-			html += "<input type='checkbox' name='os[" + data.n + "][2]' value='Windows 8' " + (( data.os.indexOf( 'Windows 8' ) != -1 )? "checked": "") + ">";
+			html += "<input type='checkbox' name='os[" + data.n + "][]' value='Windows 8' " + (( data.os.indexOf( 'Windows 8' ) != -1 )? "checked": "") + ">";
 			html += "Windows 8";
 			html += "</label>";
 			html += "</div>";
@@ -184,11 +196,11 @@
 			html += "<div class='col-lg-9'>"
 
 			html += "<label class='radio-inline control-label'>";
-			html += "<input type='radio' name='arch[" + data.n + "]' value='i686'>32 bits</input>";
+			html += "<input type='radio' name='arch[" + data.n + "][]' value='i686'>32 bits</input>";
 			html += "</label>";
 
 			html += "<label class='radio-inline control-label'>";
-			html += "<input type='radio' name='arch[" + data.n + "]' value='x86_64'/>64 bits</input>";
+			html += "<input type='radio' name='arch[" + data.n + "][]' value='x86_64'/>64 bits</input>";
 			html += "</label>";
 			html += "</div>";
 
@@ -299,8 +311,6 @@
 										$( '#packagesTable' ).dataTable().fnReloadAjax();										
 									}
 								});
-
-
 							}
 						},
 						"fnSelect": function ( nButton, oConfig, nRow ) {
@@ -315,27 +325,8 @@
 					{
 						"sExtends": "text",
 						"sButtonText": "Editar",
-						"fnInit": function ( nButton, oConfig ) {
-							var button = $( nButton );
-							button.attr( 'disabled', 'true');
-							button.attr( 'data-toggle', 'modal' );
-							button.attr( 'href', '#myModal' );
-							button.addClass( 'btn' );
-							button.addClass( 'btn-primary' );
-						},
 						"fnClick": function ( nButton, oConfig, oFlash ) {
-							var tr = $( '#packagesTable>tbody tr.active' )[0];
-							var rowData = $( '#packagesTable' ).dataTable().fnGetData( tr );
-							$( '.modal-body' ).html( getForm( rowData ) );
-							$( '.modal-title' ).html( 'Editar Software' );
-						},
-						"fnSelect": function ( nButton, oConfig, nRow ) {
-							var trs = $( '#packagesTable>tbody tr.active' );
-							if ( trs.length == 0 || trs.length > 1 ) {
-								$( nButton ).attr( 'disabled', 'true' );
-							} else {
-								$( nButton ).removeAttr( 'disabled' );
-							}
+							alert("Función sin implementar.");
 						}
 					}
 					],

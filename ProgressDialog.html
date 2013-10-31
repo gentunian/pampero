@@ -197,7 +197,7 @@
 
 	        // When the dialog is shown, sets the data and information required
 			$( '#myModal' ).on( 'shown.bs.modal', function() {
-				var rows = getSelectedRows( "#table_id" );
+				var rows = getSelectedRows( "packagesTable" );
 				var table = $( '#dialog-table' ).dataTable();
 				table.fnClearTable();
 				console.log(rows);
